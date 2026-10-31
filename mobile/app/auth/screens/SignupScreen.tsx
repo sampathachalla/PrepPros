@@ -1,30 +1,37 @@
-import { useState, useCallback } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   SafeAreaView,
 } from 'react-native';
-import { Link, useFocusEffect } from 'expo-router';
+import { Link } from 'expo-router';
+import { AuthTextInput } from '../components/AuthTextInput';
+import { AUTH_COPY, USER_ROLES } from '../constants/auth';
+import { useSignupForm } from '../hooks/useSignupForm';
 
 export default function SignupScreen() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [userType, setUserType] = useState<'Trainer' | 'Member'>('Member');
+  const {
+    email,
+    password,
+    confirmPassword,
+    role,
+    setEmail,
+    setPassword,
+    setConfirmPassword,
+    setRole,
+    submit,
+  } = useSignupForm();
 
-  useFocusEffect(
-    useCallback(() => {
-      setEmail('');
-      setPassword('');
-      setConfirmPassword('');
-      setUserType('Member');
-    }, [])
-  );
+  const handleSignup = async () => {
+    try {
+      await submit();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Unable to sign up.');
+    }
+  };
 
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: '#FAFAFA' }}>
@@ -42,7 +49,7 @@ export default function SignupScreen() {
               Create Account
             </Text>
             <Text style={{ fontSize: 14, color: '#7A7A7A', marginBottom: 24 }}>
-              Join the PrepPros community today
+              {AUTH_COPY.signupSubtitle}
             </Text>
 
             {/* Signup Form */}
@@ -52,76 +59,50 @@ export default function SignupScreen() {
                 I am a
               </Text>
               <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24 }}>
-                {['Trainer', 'Member'].map((role) => (
+                {USER_ROLES.map((option) => (
                   <TouchableOpacity
-                    key={role}
-                    onPress={() => setUserType(role as 'Trainer' | 'Member')}
+                    key={option}
+                    onPress={() => setRole(option)}
                     style={{
                       flex: 1,
                       paddingVertical: 12,
                       borderRadius: 10,
                       borderWidth: 1.5,
-                      borderColor: userType === role ? '#D7263D' : '#DADADA',
-                      backgroundColor: userType === role ? '#D7263D' : '#FAFAFA',
+                      borderColor: role === option ? '#D7263D' : '#DADADA',
+                      backgroundColor: role === option ? '#D7263D' : '#FAFAFA',
                     }}
                   >
                     <Text
                       style={{
                         textAlign: 'center',
-                        color: userType === role ? '#FFFFFF' : '#1A1A1A',
+                        color: role === option ? '#FFFFFF' : '#1A1A1A',
                         fontWeight: '600',
                       }}
                     >
-                      {role}
+                      {option}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
               {/* Email */}
-              <TextInput
+              <AuthTextInput
                 placeholder="Email"
-                style={{
-                  borderBottomWidth: 1,
-                  borderColor: '#DADADA',
-                  marginBottom: 20,
-                  paddingVertical: 10,
-                  fontSize: 14,
-                  color: '#1A1A1A',
-                }}
-                placeholderTextColor="#7A7A7A"
                 value={email}
                 onChangeText={setEmail}
                 autoCapitalize="none"
               />
               {/* Password */}
-              <TextInput
+              <AuthTextInput
                 placeholder="Password"
-                style={{
-                  borderBottomWidth: 1,
-                  borderColor: '#DADADA',
-                  marginBottom: 20,
-                  paddingVertical: 10,
-                  fontSize: 14,
-                  color: '#1A1A1A',
-                }}
-                placeholderTextColor="#7A7A7A"
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
               />
               {/* Confirm Password */}
-              <TextInput
+              <AuthTextInput
                 placeholder="Confirm Password"
-                style={{
-                  borderBottomWidth: 1,
-                  borderColor: '#DADADA',
-                  marginBottom: 28,
-                  paddingVertical: 10,
-                  fontSize: 14,
-                  color: '#1A1A1A',
-                }}
-                placeholderTextColor="#7A7A7A"
+                style={{ marginBottom: 28 }}
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 secureTextEntry
@@ -134,6 +115,7 @@ export default function SignupScreen() {
                   padding: 14,
                   borderRadius: 14,
                 }}
+                onPress={handleSignup}
               >
                 <Text
                   style={{

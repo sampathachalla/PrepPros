@@ -23,7 +23,12 @@
       "output": "static"
     },
     "plugins": [
-      "expo-router",
+      [
+        "expo-router",
+        {
+          "root": "./routes"
+        }
+      ],
       [
         "expo-splash-screen",
         {

@@ -1,0 +1,14 @@
+import type { UserRole } from '../types/auth';
+
+export const AUTH_COPY = {
+  appName: 'PrepPros',
+  tagline: 'Prepare smarter with PrepPros',
+  signupSubtitle: 'Join the PrepPros community today',
+} as const;
+
+export const USER_ROLES: UserRole[] = ['Trainer', 'Member'];
+
+export const DEMO_CREDENTIALS = {
+  identifier: 'sampath',
+  password: 'sam2001',
+} as const;

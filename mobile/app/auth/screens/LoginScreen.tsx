@@ -1,67 +1,27 @@
-import { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   SafeAreaView,
 } from 'react-native';
-import { Link, useFocusEffect, useRouter } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Link } from 'expo-router';
 import { FontAwesome } from '@expo/vector-icons';
-
-// ✅ Smooth continuous typewriter effect
-type TypewriterTextProps = {
-  text: string;
-  speed?: number;
-  style?: any;
-};
-
-function TypewriterText({ text, speed = 100, style }: TypewriterTextProps) {
-  const [displayedText, setDisplayedText] = useState('');
-  useEffect(() => {
-    const loop = () => {
-      let i = 0;
-      const interval = setInterval(() => {
-        setDisplayedText(text.slice(0, i));
-        i++;
-        if (i > text.length) {
-          i = 0;
-        }
-      }, speed);
-      return interval;
-    };
-
-    const interval = loop();
-    return () => clearInterval(interval);
-  }, [text, speed]);
-
-  return <Text style={style}>{displayedText}</Text>;
-}
+import { AuthTextInput } from '../components/AuthTextInput';
+import { TypewriterText } from '../components/TypewriterText';
+import { AUTH_COPY } from '../constants/auth';
+import { useLoginForm } from '../hooks/useLoginForm';
 
 export default function LoginScreen() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const router = useRouter(); // ✅ useRouter hook only
+  const { identifier, password, setIdentifier, setPassword, submit } = useLoginForm();
 
-  useFocusEffect(
-    useCallback(() => {
-      setEmail('');
-      setPassword('');
-    }, [])
-  );
-
-  // ✅ Dummy Login Logic
   const handleLogin = async () => {
-    if (email === 'sampath' && password === 'sam2001') {
-      const user = { id: 'u123456', username: 'sampath' };
-      await AsyncStorage.setItem('userInfo', JSON.stringify(user));
-      router.replace('/(tabs)/homepage'); // ✅ use correct path with folder alias
-    } else {
-      alert('Invalid credentials');
+    try {
+      await submit();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Unable to log in.');
     }
   };
 
@@ -78,13 +38,13 @@ export default function LoginScreen() {
           <View className="flex-1 justify-center items-center px-6 py-12">
             {/* Branding */}
             <Text style={{ fontSize: 40, fontWeight: '800', color: '#D7263D', marginBottom: 4 }}>
-              PrepPros
+              {AUTH_COPY.appName}
             </Text>
 
             {/* Typewriter Slogan */}
             <View style={{ height: 24, marginBottom: 20 }}>
               <TypewriterText
-                text="Prepare smarter with PrepPros"
+                text={AUTH_COPY.tagline}
                 speed={120}
                 style={{
                   fontSize: 14,
@@ -95,32 +55,15 @@ export default function LoginScreen() {
 
             {/* Login Form */}
             <View style={{ width: '100%', padding: 24, borderRadius: 20 }}>
-              <TextInput
+              <AuthTextInput
                 placeholder="Email or username"
-                style={{
-                  borderBottomWidth: 1,
-                  borderColor: '#DADADA',
-                  marginBottom: 20,
-                  paddingVertical: 10,
-                  fontSize: 14,
-                  color: '#1A1A1A',
-                }}
-                placeholderTextColor="#7A7A7A"
-                value={email}
-                onChangeText={setEmail}
+                value={identifier}
+                onChangeText={setIdentifier}
                 autoCapitalize="none"
               />
-              <TextInput
+              <AuthTextInput
                 placeholder="Password"
-                style={{
-                  borderBottomWidth: 1,
-                  borderColor: '#DADADA',
-                  marginBottom: 8,
-                  paddingVertical: 10,
-                  fontSize: 14,
-                  color: '#1A1A1A',
-                }}
-                placeholderTextColor="#7A7A7A"
+                style={{ marginBottom: 8 }}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
