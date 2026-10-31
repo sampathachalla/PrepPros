@@ -1,3 +1,3 @@
-export { default } from './screens/LoginScreen';
-export { default as LoginScreen } from './screens/LoginScreen';
-export { default as SignupScreen } from './screens/SignupScreen';
+export { default } from './login';
+export { default as LoginScreen } from './login';
+export { default as SignupScreen } from './signup';
