@@ -48,3 +48,18 @@ Join our community of developers creating universal apps.
 
 - [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+
+## Backend services
+
+The Docker stack includes the FastAPI API, PostgreSQL database, and a separate
+Nous Hermes-compatible research agent. Copy `.env.example` to `.env`, ensure the
+configured model endpoint is available, then start everything with:
+
+```bash
+docker compose up --build -d
+docker compose ps
+```
+
+The API is available on port `8000`, the agent on `8001`, and PostgreSQL on
+`5432`. The database schema is initialized from `db/init.sql` when its persistent
+volume is first created.

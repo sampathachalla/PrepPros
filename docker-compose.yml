@@ -1,0 +1,67 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: preppros-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-preppros}
+      POSTGRES_USER: ${POSTGRES_USER:-preppros}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-preppros_dev_password}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [preppros]
+
+  hermes-agent:
+    build: ./agent
+    container_name: preppros-hermes-agent
+    restart: unless-stopped
+    environment:
+      MODEL_BASE_URL: ${MODEL_BASE_URL:-http://host.docker.internal:11434/v1}
+      MODEL_NAME: ${MODEL_NAME:-nous-hermes2-mixtral}
+      MODEL_API_KEY: ${MODEL_API_KEY:-ollama}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "${AGENT_PORT:-8001}:8001"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [preppros]
+
+  api:
+    build: ./api
+    container_name: preppros-api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-preppros}:${POSTGRES_PASSWORD:-preppros_dev_password}@db:5432/${POSTGRES_DB:-preppros}
+      AGENT_URL: http://hermes-agent:8001
+    ports:
+      - "${API_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      hermes-agent:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [preppros]
+
+volumes:
+  postgres_data:
+
+networks:
+  preppros:
+    driver: bridge
