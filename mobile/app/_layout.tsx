@@ -2,7 +2,6 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Platform, View } from 'react-native';
-// Update the import path if ThemeContext is actually in 'fitApp/context/ThemeContext'
 import { ThemeProvider, useThemeContext } from '../context/ThemeContext';
 
 // Load Tailwind styles only on web (for NativeWind)

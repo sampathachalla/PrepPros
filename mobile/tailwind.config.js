@@ -11,7 +11,7 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // ✅ Light Mode Palette (Zytrix)
+        // PrepPros light mode palette
         background: '#FAFAFA',
         card: '#F2F2F2',
         primary: '#D7263D',

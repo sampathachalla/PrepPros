@@ -80,13 +80,13 @@ export default function LoginScreen() {
           <View className="flex-1 justify-center items-center px-6 py-12">
             {/* Branding */}
             <Text style={{ fontSize: 40, fontWeight: '800', color: '#D7263D', marginBottom: 4 }}>
-              Zytrix
+              PrepPros
             </Text>
 
             {/* Typewriter Slogan */}
             <View style={{ height: 24, marginBottom: 20 }}>
               <TypewriterText
-                text="Your fitness, your way"
+                text="Prepare smarter with PrepPros"
                 speed={120}
                 style={{
                   fontSize: 14,

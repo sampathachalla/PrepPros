@@ -42,7 +42,7 @@ export default function SignupScreen() {
               Create Account
             </Text>
             <Text style={{ fontSize: 14, color: '#7A7A7A', marginBottom: 24 }}>
-              Join the Zytrix community today
+              Join the PrepPros community today
             </Text>
 
             {/* Signup Form */}

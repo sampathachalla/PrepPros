@@ -1,16 +1,18 @@
 {
   "expo": {
-    "name": "fitApp",
-    "slug": "fitApp",
+    "name": "PrepPros",
+    "slug": "preppros",
     "version": "1.0.0",
     "orientation": "portrait",
-    "scheme": "fitapp",
+    "scheme": "preppros",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.preppros.app"
     },
     "android": {
+      "package": "com.preppros.app",
       "edgeToEdgeEnabled": true,
       "adaptiveIcon": {
         "backgroundColor": "#ffffff"
