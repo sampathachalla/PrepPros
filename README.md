@@ -60,6 +60,9 @@ docker compose up --build -d
 docker compose ps
 ```
 
+The database, API, and agent are three separate build targets in the single
+root `Dockerfile`. The root Compose file builds and runs all three containers.
+
 The API is available on port `8000`, the agent on `8001`, and PostgreSQL on
 `5432`. The database schema is initialized from `db/init.sql` when its persistent
 volume is first created.
