@@ -4,6 +4,6 @@
 .vscode/
 node_modules/
 api/node_modules/
-agent/node_modules/
+api/agent/node_modules/
 .env
 *.log

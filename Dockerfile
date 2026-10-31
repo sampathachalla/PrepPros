@@ -11,8 +11,8 @@ CMD ["node", "src/index.js"]
 
 FROM node:22-alpine AS hermes-agent
 WORKDIR /app
-COPY agent/package*.json ./
+COPY api/agent/package*.json ./
 RUN npm ci --omit=dev
-COPY agent/src ./src
+COPY api/agent/src ./src
 EXPOSE 8001
 CMD ["node", "src/index.js"]
