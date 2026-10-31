@@ -32,7 +32,7 @@ services:
     ports:
       - "${AGENT_PORT:-8001}:8001"
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8001/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -43,7 +43,7 @@ services:
     container_name: preppros-api
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-preppros}:${POSTGRES_PASSWORD:-preppros_dev_password}@db:5432/${POSTGRES_DB:-preppros}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-preppros}:${POSTGRES_PASSWORD:-preppros_dev_password}@db:5432/${POSTGRES_DB:-preppros}
       AGENT_URL: http://hermes-agent:8001
     ports:
       - "${API_PORT:-8000}:8000"
@@ -53,7 +53,7 @@ services:
       hermes-agent:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8000/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
       interval: 10s
       timeout: 5s
       retries: 10

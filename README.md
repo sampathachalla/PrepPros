@@ -51,7 +51,7 @@ Join our community of developers creating universal apps.
 
 ## Backend services
 
-The Docker stack includes the FastAPI API, PostgreSQL database, and a separate
+The Docker stack includes the Node.js API, PostgreSQL database, and a separate
 Nous Hermes-compatible research agent. Copy `.env.example` to `.env`, ensure the
 configured model endpoint is available, then start everything with:
 
