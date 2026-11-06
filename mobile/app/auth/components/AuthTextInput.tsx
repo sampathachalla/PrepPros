@@ -1,18 +1,19 @@
 import { TextInput, type TextInputProps } from 'react-native';
+import { AppTheme } from '../../../constants/Colors';
 
 export function AuthTextInput(props: TextInputProps) {
   return (
     <TextInput
-      placeholderTextColor="#7A7A7A"
+      placeholderTextColor={AppTheme.textMuted}
       {...props}
       style={[
         {
           borderBottomWidth: 1,
-          borderColor: '#DADADA',
+          borderColor: AppTheme.border,
           marginBottom: 20,
           paddingVertical: 10,
           fontSize: 14,
-          color: '#1A1A1A',
+          color: AppTheme.text,
         },
         props.style,
       ]}

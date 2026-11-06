@@ -2,18 +2,17 @@
   "expo": {
     "name": "PrepPros",
     "slug": "preppros",
+    "owner": "sampath2001",
     "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "preppros",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.preppros.app"
     },
     "android": {
       "package": "com.preppros.app",
-      "edgeToEdgeEnabled": true,
       "adaptiveIcon": {
         "backgroundColor": "#ffffff"
       }
@@ -35,7 +34,9 @@
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
-      ]
+      ],
+      "expo-notifications",
+      "@sentry/react-native"
     ],
     "experiments": {
       "typedRoutes": true

@@ -31,17 +31,22 @@ services:
     container_name: preppros-hermes-agent
     restart: unless-stopped
     environment:
-      MODEL_BASE_URL: ${MODEL_BASE_URL:-http://host.docker.internal:11434/v1}
-      MODEL_NAME: ${MODEL_NAME:-nous-hermes2-mixtral}
-      MODEL_API_KEY: ${MODEL_API_KEY:-ollama}
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      # GPT-6 Luna (see api/agent/hermes/config.yaml)
+      OPENAI_API_KEY: ${OPENAI_API_KEY:?Set OPENAI_API_KEY in .env}
+      API_SERVER_KEY: ${HERMES_API_KEY:?Set HERMES_API_KEY in .env}
+      # Used by the PrepPros MCP tools inside this container
+      PREPPROS_API_URL: http://api:8000
+      AGENT_TOOLS_KEY: ${AGENT_TOOLS_KEY:?Set AGENT_TOOLS_KEY in .env}
+    volumes:
+      - hermes_data:/opt/data
     ports:
-      - "${AGENT_PORT:-8001}:8001"
+      # Loopback only: the API server can run tools, and only the PrepPros API should call it
+      - "127.0.0.1:${AGENT_PORT:-8642}:8642"
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://localhost:8001/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      test: ["CMD", "curl", "-fsS", "http://localhost:8642/health"]
       interval: 10s
       timeout: 5s
+      start_period: 60s
       retries: 10
     networks: [preppros]
 
@@ -54,7 +59,21 @@ services:
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-preppros}:${POSTGRES_PASSWORD:-preppros_dev_password}@db:5432/${POSTGRES_DB:-preppros}
-      AGENT_URL: http://hermes-agent:8001
+      AGENT_URL: http://hermes-agent:8642
+      HERMES_API_KEY: ${HERMES_API_KEY:?Set HERMES_API_KEY in .env}
+      AGENT_TOOLS_KEY: ${AGENT_TOOLS_KEY:?Set AGENT_TOOLS_KEY in .env}
+      SUPABASE_URL: ${SUPABASE_URL:?Set SUPABASE_URL in .env}
+      SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY:?Set SUPABASE_PUBLISHABLE_KEY in .env}
+      SUPABASE_DB_URL: ${SUPABASE_DB_URL:-}
+      # Path inside the container, e.g. /app/supabase/supabase-ca.crt
+      SUPABASE_DB_CA_CERT: ${SUPABASE_DB_CA_CERT:-}
+      # Server-only key for the JSONL backup in Supabase Storage
+      SUPABASE_SECRET_KEY: ${SUPABASE_SECRET_KEY:-}
+      SUPABASE_BACKUP_BUCKET: ${SUPABASE_BACKUP_BUCKET:-}
+      # TEMPORARY: owner of bookmark requests that have no token; remove before real users
+      TEMP_USER_ID: ${TEMP_USER_ID:-}
+      BRIGHT_DATA_API_KEY: ${BRIGHT_DATA_API_KEY:-}
+      YOUTUBE_API_KEY: ${YOUTUBE_API_KEY:-}
     ports:
       - "${API_PORT:-8000}:8000"
     depends_on:
@@ -71,6 +90,8 @@ services:
 
 volumes:
   postgres_data:
+  # Hermes Agent state: chat history, sessions and logs
+  hermes_data:
 
 networks:
   preppros:

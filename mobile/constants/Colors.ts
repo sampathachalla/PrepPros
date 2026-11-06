@@ -1,26 +1,78 @@
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
+ * PrepPros brand palette — baby pink, baby blue, white, and black.
+ * Keep Tailwind `tailwind.config.js` in sync with these values.
  */
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+export const Brand = {
+  babyPink: '#F5AFC4',
+  babyBlue: '#A8DDF5',
+  white: '#FFFFFF',
+  black: '#0A0A0A',
+} as const;
+
+export type BrandColor = (typeof Brand)[keyof typeof Brand];
+
+/** Shared semantic tokens (light UI). */
+export const AppTheme = {
+  background: Brand.white,
+  surface: Brand.white,
+  text: Brand.black,
+  textMuted: '#5C5C5C',
+  primary: Brand.babyPink,
+  secondary: Brand.babyBlue,
+  accent: Brand.babyBlue,
+  onPrimary: Brand.black,
+  onSecondary: Brand.black,
+  border: '#E3E3E3',
+  borderActive: Brand.babyBlue,
+  link: Brand.babyBlue,
+  linkAlt: Brand.babyPink,
+  icon: Brand.babyPink,
+  error: '#C62828',
+  success: '#2E7D32',
+} as const;
+
+export const AppThemeDark = {
+  background: Brand.black,
+  surface: '#141414',
+  text: Brand.white,
+  textMuted: '#B0B0B0',
+  primary: Brand.babyPink,
+  secondary: Brand.babyBlue,
+  accent: Brand.babyBlue,
+  onPrimary: Brand.black,
+  onSecondary: Brand.black,
+  border: '#2A2A2A',
+  borderActive: Brand.babyBlue,
+  link: Brand.babyBlue,
+  linkAlt: Brand.babyPink,
+  icon: Brand.babyBlue,
+  error: '#EF5350',
+  success: '#66BB6A',
+} as const;
+
+const tintColorLight = Brand.babyBlue;
+const tintColorDark = Brand.babyPink;
 
 export const Colors = {
   light: {
-    text: '#11181C',
-    background: '#fff',
+    text: AppTheme.text,
+    background: AppTheme.background,
     tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
+    icon: AppTheme.textMuted,
+    tabIconDefault: AppTheme.textMuted,
     tabIconSelected: tintColorLight,
+    primary: AppTheme.primary,
+    secondary: AppTheme.secondary,
   },
   dark: {
-    text: '#ECEDEE',
-    background: '#151718',
+    text: AppThemeDark.text,
+    background: AppThemeDark.background,
     tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
+    icon: AppThemeDark.textMuted,
+    tabIconDefault: AppThemeDark.textMuted,
     tabIconSelected: tintColorDark,
+    primary: AppThemeDark.primary,
+    secondary: AppThemeDark.secondary,
   },
 };

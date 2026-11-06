@@ -1,0 +1,12 @@
+export { default as ProfileScreen } from './screens/ProfileScreen';
+export * from './types/profile';
+export * from './constants/profile';
+export * from './hooks/useProfile';
+export * from './hooks/useProfileColors';
+export * from './store/profileStore';
+export * from './services/profileService';
+export * from './components/ProfileHeroCard';
+export * from './components/ProfileStatsGrid';
+export * from './components/ProfileMenuRow';
+export * from './components/ProfileMenuSection';
+export * from './components/EditProfileModal';

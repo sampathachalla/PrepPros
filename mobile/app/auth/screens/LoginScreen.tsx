@@ -1,21 +1,32 @@
 import {
   View,
   Text,
+  Image,
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   SafeAreaView,
+  useWindowDimensions,
 } from 'react-native';
 import { Link } from 'expo-router';
 import { FontAwesome } from '@expo/vector-icons';
+import { AuthSubmitButton } from '../components/AuthSubmitButton';
 import { AuthTextInput } from '../components/AuthTextInput';
 import { TypewriterText } from '../components/TypewriterText';
+import { AppTheme, Brand } from '../../../constants/Colors';
+import { authStyles } from '../../../constants/theme';
 import { AUTH_COPY } from '../constants/auth';
 import { useLoginForm } from '../hooks/useLoginForm';
 
+const LOGO_ASPECT = 711 / 292;
+
 export default function LoginScreen() {
-  const { identifier, password, setIdentifier, setPassword, submit } = useLoginForm();
+  const { width: windowWidth } = useWindowDimensions();
+  const logoWidth = Math.min(windowWidth - 48, 420);
+  const logoHeight = logoWidth / LOGO_ASPECT;
+
+  const { identifier, password, setIdentifier, setPassword, submit, isSubmitting } = useLoginForm();
 
   const handleLogin = async () => {
     try {
@@ -26,7 +37,7 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1" style={{ backgroundColor: '#FAFAFA' }}>
+    <SafeAreaView className="flex-1 bg-background" style={authStyles.screen}>
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -37,9 +48,13 @@ export default function LoginScreen() {
         >
           <View className="flex-1 justify-center items-center px-6 py-12">
             {/* Branding */}
-            <Text style={{ fontSize: 40, fontWeight: '800', color: '#D7263D', marginBottom: 4 }}>
-              {AUTH_COPY.appName}
-            </Text>
+            <Image
+              source={require('../../../assets/preppros-logo.png')}
+              style={{ width: logoWidth, height: logoHeight, marginBottom: 8 }}
+              resizeMode="contain"
+              accessibilityRole="image"
+              accessibilityLabel={AUTH_COPY.appName}
+            />
 
             {/* Typewriter Slogan */}
             <View style={{ height: 24, marginBottom: 20 }}>
@@ -48,7 +63,7 @@ export default function LoginScreen() {
                 speed={120}
                 style={{
                   fontSize: 14,
-                  color: '#7A7A7A',
+                  color: AppTheme.textMuted,
                 }}
               />
             </View>
@@ -56,10 +71,12 @@ export default function LoginScreen() {
             {/* Login Form */}
             <View style={{ width: '100%', padding: 24, borderRadius: 20 }}>
               <AuthTextInput
-                placeholder="Email or username"
+                placeholder="Email"
                 value={identifier}
                 onChangeText={setIdentifier}
                 autoCapitalize="none"
+                keyboardType="email-address"
+                editable={!isSubmitting}
               />
               <AuthTextInput
                 placeholder="Password"
@@ -67,49 +84,37 @@ export default function LoginScreen() {
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
+                editable={!isSubmitting}
               />
 
               {/* 🔐 Forgot Password Link */}
               <View style={{ alignItems: 'flex-end', marginBottom: 20 }}>
                 <TouchableOpacity onPress={() => { /* TODO: Link to forgot password screen */ }}>
-                  <Text style={{ fontSize: 13, color: '#D7263D', fontWeight: '500' }}>
+                  <Text style={{ fontSize: 13, ...authStyles.link, fontWeight: '500' }}>
                     Forgot Password?
                   </Text>
                 </TouchableOpacity>
               </View>
 
-              <TouchableOpacity
-                style={{
-                  backgroundColor: '#D7263D',
-                  padding: 14,
-                  borderRadius: 14,
-                }}
-                onPress={handleLogin} // ✅ Added handler here
-              >
-                <Text
-                  style={{
-                    color: '#FFFFFF',
-                    textAlign: 'center',
-                    fontWeight: '700',
-                    fontSize: 16,
-                  }}
-                >
-                  Log In
-                </Text>
-              </TouchableOpacity>
+              <AuthSubmitButton
+                label="Log In"
+                loadingLabel="Logging you in…"
+                isLoading={isSubmitting}
+                onPress={handleLogin}
+              />
             </View>
 
             {/* Divider */}
-            <Text style={{ color: '#7A7A7A', marginVertical: 24 }}>or continue with</Text>
+            <Text style={{ color: AppTheme.textMuted, marginVertical: 24 }}>or continue with</Text>
 
             {/* Google Button */}
             <TouchableOpacity
               style={{
-                backgroundColor: '#FFFFFF',
+                backgroundColor: AppTheme.surface,
                 paddingVertical: 12,
                 paddingHorizontal: 24,
                 borderRadius: 50,
-                borderColor: '#DADADA',
+                borderColor: AppTheme.border,
                 borderWidth: 1,
                 marginBottom: 24,
                 flexDirection: 'row',
@@ -120,16 +125,16 @@ export default function LoginScreen() {
                 // TODO: Handle Google login
               }}
             >
-              <FontAwesome name="google" size={20} color="#D7263D" />
-              <Text style={{ fontSize: 16, fontWeight: '600', color: '#2E2E2E' }}>
+              <FontAwesome name="google" size={20} color={Brand.babyBlue} />
+              <Text style={{ fontSize: 16, fontWeight: '600', color: AppTheme.text }}>
                 Sign in with Google
               </Text>
             </TouchableOpacity>
 
             {/* Footer */}
-            <Text style={{ fontSize: 14, color: '#1A1A1A' }}>
+            <Text style={{ fontSize: 14, color: AppTheme.text }}>
               Don’t have an account?{' '}
-              <Link href="/auth/signup" style={{ color: '#FF6F00', fontWeight: '600' }}>
+              <Link href="/auth/signup" style={{ ...authStyles.link, fontWeight: '600' }}>
                 Sign up
               </Link>
             </Text>

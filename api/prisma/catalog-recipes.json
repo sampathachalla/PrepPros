@@ -1,0 +1,250 @@
+[
+  {
+    "title": "Grilled Lemon Herb Chicken Bowl",
+    "category": "high_protein",
+    "prepTimeMinutes": 15,
+    "cookTimeMinutes": 20,
+    "servings": 4,
+    "difficulty": "Easy",
+    "imageUrl": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80",
+    "ingredients": [
+      {
+        "name": "Chicken breast (cubed)",
+        "amount": "600g"
+      },
+      {
+        "name": "Quinoa (dry)",
+        "amount": "1 cup"
+      },
+      {
+        "name": "Broccoli florets",
+        "amount": "2 cups"
+      },
+      {
+        "name": "Olive oil",
+        "amount": "2 tbsp"
+      },
+      {
+        "name": "Lemon juice & zest",
+        "amount": "1 lemon"
+      },
+      {
+        "name": "Garlic powder, oregano & sea salt",
+        "amount": "to taste"
+      }
+    ],
+    "steps": [
+      "Rinse quinoa and cook in 2 cups of salted boiling water for 15 minutes.",
+      "Toss chicken breast with olive oil, lemon juice, garlic, and dried oregano.",
+      "Grill or sear chicken in a hot skillet for 6-8 minutes until golden and cooked through.",
+      "Steam broccoli florets until tender-crisp (approx. 4 mins).",
+      "Divide quinoa, chicken, and broccoli evenly into 4 meal prep containers."
+    ]
+  },
+  {
+    "title": "Baked Garlic Herb Salmon & Asparagus",
+    "category": "lunch_dinner",
+    "prepTimeMinutes": 10,
+    "cookTimeMinutes": 15,
+    "servings": 3,
+    "difficulty": "Easy",
+    "imageUrl": "https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&w=800&q=80",
+    "ingredients": [
+      {
+        "name": "Salmon fillets",
+        "amount": "3 pieces (150g each)"
+      },
+      {
+        "name": "Fresh asparagus spears",
+        "amount": "1 bunch"
+      },
+      {
+        "name": "Minced garlic",
+        "amount": "3 cloves"
+      },
+      {
+        "name": "Olive oil",
+        "amount": "2 tbsp"
+      },
+      {
+        "name": "Lemon slices",
+        "amount": "6 slices"
+      },
+      {
+        "name": "Salt & crushed black pepper",
+        "amount": "to taste"
+      }
+    ],
+    "steps": [
+      "Preheat oven to 400°F (200°C) and line a baking sheet with parchment.",
+      "Trim tough ends off asparagus and arrange beside salmon fillets on the sheet.",
+      "Drizzle olive oil over salmon and asparagus, then rub with garlic, salt, and pepper.",
+      "Top each fillet with fresh lemon slices.",
+      "Bake for 12-15 minutes until salmon flakes easily with a fork."
+    ]
+  },
+  {
+    "title": "Protein-Packed Overnight Berry Oats",
+    "category": "breakfast",
+    "prepTimeMinutes": 10,
+    "servings": 2,
+    "difficulty": "Easy",
+    "imageUrl": "https://images.unsplash.com/photo-1517673132405-a56a62b18caf?auto=format&fit=crop&w=800&q=80",
+    "ingredients": [
+      {
+        "name": "Rolled oats",
+        "amount": "1 cup"
+      },
+      {
+        "name": "Almond milk (or dairy milk)",
+        "amount": "1 cup"
+      },
+      {
+        "name": "Vanilla whey or plant protein powder",
+        "amount": "1 scoop"
+      },
+      {
+        "name": "Chia seeds",
+        "amount": "1 tbsp"
+      },
+      {
+        "name": "Greek yogurt (plain)",
+        "amount": "1/2 cup"
+      },
+      {
+        "name": "Fresh blueberries & strawberries",
+        "amount": "1/2 cup"
+      }
+    ],
+    "steps": [
+      "In a mason jar or container, mix oats, protein powder, and chia seeds.",
+      "Pour in milk and Greek yogurt; stir thoroughly until smooth.",
+      "Cover and refrigerate overnight (or at least 4 hours).",
+      "Top with fresh berries and a drizzle of honey before serving."
+    ]
+  },
+  {
+    "title": "Crispy Tofu & Edamame Grain Bowl",
+    "category": "vegetarian",
+    "prepTimeMinutes": 15,
+    "cookTimeMinutes": 20,
+    "servings": 3,
+    "difficulty": "Medium",
+    "imageUrl": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=800&q=80",
+    "ingredients": [
+      {
+        "name": "Extra-firm tofu (pressed & cubed)",
+        "amount": "1 block (400g)"
+      },
+      {
+        "name": "Cooked brown rice",
+        "amount": "2 cups"
+      },
+      {
+        "name": "Shelled edamame (steamed)",
+        "amount": "1 cup"
+      },
+      {
+        "name": "Cornstarch",
+        "amount": "1 tbsp"
+      },
+      {
+        "name": "Low-sodium soy sauce & sesame oil",
+        "amount": "2 tbsp each"
+      },
+      {
+        "name": "Sesame seeds & sliced scallions",
+        "amount": "for garnish"
+      }
+    ],
+    "steps": [
+      "Toss pressed tofu cubes with cornstarch, soy sauce, and a touch of sesame oil.",
+      "Pan-fry in a non-stick skillet or air-fry at 390°F for 15 minutes until crispy.",
+      "Steam edamame for 3 minutes.",
+      "Assemble bowls with brown rice base, crispy tofu, and edamame.",
+      "Garnish with toasted sesame seeds and chopped scallions."
+    ]
+  },
+  {
+    "title": "15-Minute Turkey Avocado Wrap",
+    "category": "quick_prep",
+    "prepTimeMinutes": 15,
+    "servings": 2,
+    "difficulty": "Easy",
+    "imageUrl": "https://images.unsplash.com/photo-1528735602780-2552fd46c7af?auto=format&fit=crop&w=800&q=80",
+    "ingredients": [
+      {
+        "name": "Whole wheat tortillas",
+        "amount": "2 large"
+      },
+      {
+        "name": "Lean roasted turkey breast (sliced)",
+        "amount": "200g"
+      },
+      {
+        "name": "Ripe avocado (sliced)",
+        "amount": "1"
+      },
+      {
+        "name": "Baby spinach leaves",
+        "amount": "1 cup"
+      },
+      {
+        "name": "Dijon mustard or hummus",
+        "amount": "2 tbsp"
+      },
+      {
+        "name": "Sliced tomatoes",
+        "amount": "1 medium"
+      }
+    ],
+    "steps": [
+      "Lay each tortilla flat on a clean cutting board.",
+      "Spread Dijon mustard or hummus evenly across the center of each wrap.",
+      "Layer turkey breast, baby spinach, avocado slices, and tomato.",
+      "Fold in the sides and roll tightly from the bottom up.",
+      "Slice diagonally and wrap in foil or wax paper for meal prep storage."
+    ]
+  },
+  {
+    "title": "No-Bake Peanut Butter Protein Bites",
+    "category": "snacks",
+    "prepTimeMinutes": 10,
+    "servings": 12,
+    "difficulty": "Easy",
+    "imageUrl": "https://images.unsplash.com/photo-1590080875515-8a3a8dc5735e?auto=format&fit=crop&w=800&q=80",
+    "ingredients": [
+      {
+        "name": "Natural creamy peanut butter",
+        "amount": "1/2 cup"
+      },
+      {
+        "name": "Rolled oats",
+        "amount": "1 cup"
+      },
+      {
+        "name": "Honey or pure maple syrup",
+        "amount": "1/3 cup"
+      },
+      {
+        "name": "Chocolate protein powder",
+        "amount": "1 scoop"
+      },
+      {
+        "name": "Dark chocolate chips",
+        "amount": "2 tbsp"
+      },
+      {
+        "name": "Flaxseed meal",
+        "amount": "2 tbsp"
+      }
+    ],
+    "steps": [
+      "In a medium mixing bowl, combine peanut butter and honey until smooth.",
+      "Stir in oats, protein powder, flaxseed meal, and chocolate chips.",
+      "Mix thoroughly until a thick, cohesive dough forms.",
+      "Roll into 12 equal-sized balls (about 1 tbsp each).",
+      "Place on a plate and chill in the fridge for 20 minutes to set."
+    ]
+  }
+]

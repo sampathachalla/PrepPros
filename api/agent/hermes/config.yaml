@@ -1,0 +1,54 @@
+# Hermes Agent configuration for PrepPros. Installed into $HERMES_HOME (/opt/data) on every boot by
+# preppros-config.sh, so edit it here rather than inside the container.
+
+model:
+  default: gpt-6-luna
+  # OpenAI's API, authenticated with OPENAI_API_KEY from the container environment
+  provider: openai-api
+  context_length: 1050000
+
+agent:
+  # A chat turn needs a handful of tool calls; this caps runaway loops and their cost
+  max_turns: 12
+  # Several app users share this agent, so nothing may persist or reach outside the PrepPros tools
+  disabled_toolsets:
+    - memory
+    - session_search
+    - terminal
+    - file
+    - browser
+    - web
+    - cronjob
+
+memory:
+  memory_enabled: false
+  user_profile_enabled: false
+
+terminal:
+  # An empty directory, so no project context files are read into the prompt
+  cwd: /opt/data/workspace
+
+# The OpenAI-compatible API server (used by the PrepPros API) gets the PrepPros tools and nothing else.
+# Hermes logs that 'preppros' is an unknown toolset: its check only knows built-in names, and MCP
+# servers listed here are still enabled.
+platform_toolsets:
+  api_server: [preppros]
+
+tools:
+  tool_search:
+    # Offer the few PrepPros tools to the model directly instead of behind tool_search/tool_call
+    enabled: "off"
+
+mcp_servers:
+  preppros:
+    command: node
+    args: ["/opt/preppros/agents/hermes/index.ts"]
+    cwd: /opt/preppros
+    env:
+      PREPPROS_API_URL: "${PREPPROS_API_URL}"
+      AGENT_TOOLS_KEY: "${AGENT_TOOLS_KEY}"
+      NEEDLE_MODEL_PATH: /opt/preppros/models/needle3.cact
+      NEEDLE_TELEMETRY: "0"
+      DO_NOT_TRACK: "1"
+    timeout: 60
+    connect_timeout: 30

@@ -7,8 +7,3 @@ export const AUTH_COPY = {
 } as const;
 
 export const USER_ROLES: UserRole[] = ['Trainer', 'Member'];
-
-export const DEMO_CREDENTIALS = {
-  identifier: 'sampath',
-  password: 'sam2001',
-} as const;

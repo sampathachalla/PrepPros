@@ -1,7 +1,6 @@
 // context/ThemeContext.tsx
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import { Appearance } from 'react-native';
-import { useColorScheme } from 'nativewind';
 
 type Theme = 'light' | 'dark';
 
@@ -16,19 +15,12 @@ const ThemeContext = createContext<ThemeContextProps>({
 });
 
 export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
-  const [theme, setTheme] = useState<Theme>('light');
-  const { setColorScheme } = useColorScheme();
-
-  useEffect(() => {
-    const systemColor = Appearance.getColorScheme() || 'light';
-    setTheme(systemColor);
-    setColorScheme(systemColor);
-  }, []);
+  // The root layout applies the matching `dark` class for NativeWind. Keeping the
+  // theme in one place avoids calling setColorScheme against a stale media-mode stylesheet.
+  const [theme, setTheme] = useState<Theme>(() => Appearance.getColorScheme() ?? 'light');
 
   const toggleTheme = () => {
-    const newTheme = theme === 'light' ? 'dark' : 'light';
-    setTheme(newTheme);
-    setColorScheme(newTheme);
+    setTheme((current) => (current === 'light' ? 'dark' : 'light'));
   };
 
   return (
