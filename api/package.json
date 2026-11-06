@@ -13,6 +13,7 @@
     "db:migrate": "prisma migrate dev",
     "db:deploy": "node prisma/deploy.mjs",
     "db:seed": "tsx --env-file-if-exists=.env prisma/seed.ts",
+    "seed:demo": "tsx --env-file-if-exists=.env scripts/demo-household.ts",
     "supabase:migrate": "tsx --env-file-if-exists=.env scripts/supabase-migrate.ts"
   },
   "dependencies": {

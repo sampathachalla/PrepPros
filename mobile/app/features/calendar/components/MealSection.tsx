@@ -30,9 +30,7 @@ interface MealSectionProps {
 
 const CATEGORY_ICONS = { breakfast: Sun, lunch: Utensils, dinner: Moon, snacks: Apple } as const;
 
-const ROW_PADDING = 12;
-
-/** One meal's row: its dishes stacked, then a way to add more. */
+/** One meal's row: the dishes the admin has set. Suggestions wait in the sheet behind its button. */
 export function MealSection({
   category,
   label,
@@ -49,9 +47,16 @@ export function MealSection({
   const Icon = CATEGORY_ICONS[category];
 
   const canAdd = permissions.canEditPlan || permissions.canSuggest;
-  const addLabel = permissions.canEditPlan ? 'Add dish' : 'Suggest a meal';
+  const buttonLabel = permissions.canEditPlan ? 'Add' : 'Suggest';
   const approved = dishes.filter((dish) => dish.status === 'approved');
+  const suggestions = dishes.filter((dish) => dish.status !== 'approved');
+  const pendingCount = suggestions.filter((dish) => dish.status === 'pending').length;
   const answered = approved.reduce((count, dish) => count + dish.memberIds.length, 0);
+
+  const openPicker = () => {
+    haptics.selection();
+    setIsPickerOpen(true);
+  };
 
   const handlePick = async (option: DishOption | { name: string }) => {
     const { name, recipeId, bookmarkId, fromDishId } = option as DishOption;
@@ -73,6 +78,7 @@ export function MealSection({
           <Icon size={15} color={accent} />
         </View>
         <Text style={[styles.label, { color: colors.text }]}>{label}</Text>
+
         {approved.length > 0 ? (
           <View style={[styles.countBadge, { backgroundColor: `${accent}40` }]}>
             <Text style={[styles.countText, { color: colors.text }]}>
@@ -80,42 +86,45 @@ export function MealSection({
             </Text>
           </View>
         ) : null}
+
+        {canAdd ? (
+          <TouchableOpacity
+            onPress={openPicker}
+            activeOpacity={0.7}
+            hitSlop={6}
+            style={[styles.button, { borderColor: accent }]}
+            accessibilityRole="button"
+            accessibilityLabel={`${buttonLabel} for ${label}${pendingCount > 0 ? `, ${pendingCount} waiting` : ''}`}
+          >
+            <Plus size={13} color={colors.text} strokeWidth={2.5} />
+            <Text style={[styles.buttonText, { color: colors.text }]}>{buttonLabel}</Text>
+            {pendingCount > 0 ? (
+              <View style={[styles.pendingBadge, { backgroundColor: accent }]}>
+                <Text style={[styles.pendingText, { color: colors.onPrimary }]}>{pendingCount}</Text>
+              </View>
+            ) : null}
+          </TouchableOpacity>
+        ) : null}
       </View>
 
-      {dishes.map((dish) => (
-        <DishCard
-          key={dish.id}
-          dish={dish}
-          accent={accent}
-          members={members}
-          myId={myId}
-          permissions={permissions}
-          suggestLabel={addLabel}
-          onSuggest={() => setIsPickerOpen(true)}
-        />
+      {approved.map((dish) => (
+        <DishCard key={dish.id} dish={dish} accent={accent} members={members} myId={myId} permissions={permissions} />
       ))}
 
-      {dishes.length === 0 && !canAdd ? (
-        <Text style={[styles.emptyText, { color: colors.textMuted }]}>No dishes for this meal</Text>
-      ) : null}
-
-      {canAdd ? (
-        <TouchableOpacity
-          onPress={() => setIsPickerOpen(true)}
-          activeOpacity={0.7}
-          style={[styles.addButton, { borderColor: accent }]}
-          accessibilityRole="button"
-          accessibilityLabel={`${addLabel} for ${label}`}
-        >
-          <Plus size={15} color={colors.text} strokeWidth={2.5} />
-          <Text style={[styles.addText, { color: colors.text }]}>{addLabel}</Text>
-        </TouchableOpacity>
+      {approved.length === 0 ? (
+        <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+          {canAdd ? 'Nothing planned yet' : 'No dishes for this meal'}
+        </Text>
       ) : null}
 
       <MealPickerSheet
         visible={isPickerOpen}
-        title={`${addLabel}: ${label}`}
+        title={`${buttonLabel}: ${label}`}
         category={category}
+        suggestions={suggestions}
+        accent={accent}
+        myId={myId}
+        canDecide={permissions.canDecide}
         onPick={handlePick}
         onClose={() => setIsPickerOpen(false)}
       />
@@ -125,22 +134,23 @@ export function MealSection({
 
 const styles = StyleSheet.create({
   // Rows split the spare height evenly, and never get too small to read
-  row: { flexGrow: 1, minHeight: 84, justifyContent: 'center', gap: 8, padding: ROW_PADDING },
+  row: { flexGrow: 1, minHeight: 84, justifyContent: 'center', gap: 8, padding: 12 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   iconBubble: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   label: { flex: 1, fontSize: 15, fontWeight: '800' },
   countBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
   countText: { fontSize: 11, fontWeight: '800' },
   emptyText: { fontSize: 13 },
-  addButton: {
+  button: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
+    gap: 4,
     borderWidth: 1,
-    borderStyle: 'dashed',
-    borderRadius: 14,
-    paddingVertical: 10,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
   },
-  addText: { fontSize: 13, fontWeight: '800' },
+  buttonText: { fontSize: 12, fontWeight: '800' },
+  pendingBadge: { minWidth: 16, height: 16, borderRadius: 8, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
+  pendingText: { fontSize: 10, fontWeight: '800' },
 });

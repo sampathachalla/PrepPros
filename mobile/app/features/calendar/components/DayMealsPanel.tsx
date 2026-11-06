@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -8,7 +8,6 @@ import {
   type NativeSyntheticEvent,
 } from 'react-native';
 import { haptics } from '@/app/shared/services/haptics';
-import { DayPagerLockContext } from '../hooks/useDayPagerLock';
 import { addDays } from '../utils/dateUtils';
 import { isPlanningEditable } from '../utils/planningHorizonUtils';
 import { swipedPage } from '../utils/swipeUtils';
@@ -31,7 +30,6 @@ interface DayMealsPanelProps {
  */
 export function DayMealsPanel({ dateKey, onSelectDate, onAddDish }: DayMealsPanelProps) {
   const { width } = useWindowDimensions();
-  const [isLocked, setIsLocked] = useState(false);
 
   const previousDay = addDays(dateKey, -1);
   const nextDay = addDays(dateKey, 1);
@@ -46,28 +44,23 @@ export function DayMealsPanel({ dateKey, onSelectDate, onAddDish }: DayMealsPane
   };
 
   return (
-    <DayPagerLockContext.Provider value={setIsLocked}>
-      <ScrollView
-        key={`${dateKey}-${width}`}
-        style={styles.row}
-        horizontal
-        pagingEnabled
-        directionalLockEnabled
-        bounces={false}
-        scrollEnabled={!isLocked}
-        showsHorizontalScrollIndicator={false}
-        contentOffset={{ x: width, y: 0 }}
-        onMomentumScrollEnd={handleSwipeEnd}
-        onTouchEnd={() => setIsLocked(false)}
-        onTouchCancel={() => setIsLocked(false)}
-      >
-        {pages.map((date) => (
-          <View key={date} style={{ width }}>
-            <DayPage dateKey={date} onAddDish={onAddDish} />
-          </View>
-        ))}
-      </ScrollView>
-    </DayPagerLockContext.Provider>
+    <ScrollView
+      key={`${dateKey}-${width}`}
+      style={styles.row}
+      horizontal
+      pagingEnabled
+      directionalLockEnabled
+      bounces={false}
+      showsHorizontalScrollIndicator={false}
+      contentOffset={{ x: width, y: 0 }}
+      onMomentumScrollEnd={handleSwipeEnd}
+    >
+      {pages.map((date) => (
+        <View key={date} style={{ width }}>
+          <DayPage dateKey={date} onAddDish={onAddDish} />
+        </View>
+      ))}
+    </ScrollView>
   );
 }
 

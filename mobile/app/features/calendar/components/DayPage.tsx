@@ -40,13 +40,10 @@ export function DayPage({ dateKey, onAddDish }: DayPageProps) {
 
   const isPast = dateKey < getTodayDateKey() || !isPlanningEditable(dateKey);
   const permissions = dayPermissions(day, isAdmin, isPast, now);
-  const canAdd = permissions.canEditPlan || permissions.canSuggest;
   const hint = permissions.canAnswer
-    ? canAdd
-      ? 'Swipe a dish right to accept it, left to suggest another.'
-      : 'Swipe a dish right to accept it.'
+    ? 'Tap a dish to choose it. One choice per meal.'
     : permissions.canEditPlan
-      ? 'Swipe a dish left to add another. Hold it to remove it.'
+      ? 'Hold a dish to remove it.'
       : null;
 
   return (

@@ -4,6 +4,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -11,19 +12,35 @@ import {
 } from 'react-native';
 import { X } from 'lucide-react-native';
 import { useCalendarColors } from '../hooks/useCalendarColors';
-import type { DishActionResult, DishOption, MealCategory } from '../types/calendar';
+import type { DishActionResult, DishOption, MealCategory, ScheduledDish } from '../types/calendar';
 import { MealPickerPanel } from './MealPickerPanel';
+import { SuggestionRow } from './SuggestionRow';
 
 interface MealPickerSheetProps {
   visible: boolean;
   title: string;
   category: MealCategory;
+  /** Suggestions for this meal that aren't on the plan. */
+  suggestions: ScheduledDish[];
+  accent: string;
+  myId: string;
+  canDecide: boolean;
   onPick: (option: DishOption | { name: string }) => Promise<DishActionResult>;
   onClose: () => void;
 }
 
-/** Slides up from the bottom, because the picker needs more room than a meal's row has. */
-export function MealPickerSheet({ visible, title, category, onPick, onClose }: MealPickerSheetProps) {
+/** Where a meal's suggestions are made and decided, so its row only shows what is on the plan. */
+export function MealPickerSheet({
+  visible,
+  title,
+  category,
+  suggestions,
+  accent,
+  myId,
+  canDecide,
+  onPick,
+  onClose,
+}: MealPickerSheetProps) {
   const colors = useCalendarColors();
 
   return (
@@ -40,6 +57,18 @@ export function MealPickerSheet({ visible, title, category, onPick, onClose }: M
               <X size={20} color={colors.textMuted} />
             </TouchableOpacity>
           </View>
+
+          {suggestions.length > 0 ? (
+            <>
+              <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Suggestions</Text>
+              <ScrollView style={styles.suggestions} contentContainerStyle={styles.suggestionList}>
+                {suggestions.map((dish) => (
+                  <SuggestionRow key={dish.id} dish={dish} accent={accent} myId={myId} canDecide={canDecide} />
+                ))}
+              </ScrollView>
+            </>
+          ) : null}
+
           <MealPickerPanel category={category} onPick={onPick} />
         </View>
       </KeyboardAvoidingView>
@@ -53,4 +82,7 @@ const styles = StyleSheet.create({
   sheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, borderWidth: 1, padding: 20, paddingBottom: 36 },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
   title: { fontSize: 18, fontWeight: '800' },
+  sectionTitle: { fontSize: 12, fontWeight: '800', marginBottom: 8 },
+  suggestions: { maxHeight: 200, marginBottom: 12 },
+  suggestionList: { gap: 8 },
 });
