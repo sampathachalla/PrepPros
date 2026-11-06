@@ -1,0 +1,23 @@
+[Unit]
+Description=PrepPros persistent Expo and API tunnels
+Wants=network-online.target
+Requires=preppros-api.service
+After=network-online.target preppros-api.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/PrepPros/mobile
+Environment=HOME=/home/ubuntu
+Environment=PATH=/home/ubuntu/.local/bin:/usr/local/bin:/usr/bin:/bin
+Environment=NODE_ENV=development
+ExecStart=/usr/bin/npm run tunnel:persistent
+Restart=always
+RestartSec=3
+KillMode=mixed
+TimeoutStopSec=10
+
+[Install]
+WantedBy=multi-user.target

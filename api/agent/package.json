@@ -1,11 +1,18 @@
 {
   "name": "preppros-hermes-agent",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
+  "description": "PrepPros MCP tools for the Hermes Agent container, with Needle 3 for local recipe search",
   "type": "module",
-  "scripts": { "start": "node src/index.js" },
+  "engines": { "node": ">=22.18" },
+  "scripts": {
+    "start": "node agents/hermes/index.ts",
+    "download-model": "node agents/hermes/downloadModel.ts",
+    "test": "node --test 'agents/**/*.test.ts'"
+  },
   "dependencies": {
-    "express": "5.3.0",
-    "openai": "7.47.0"
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "cactus-needle": "0.3.0",
+    "zod": "4.6.7"
   }
 }

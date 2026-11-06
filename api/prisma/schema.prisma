@@ -1,0 +1,561 @@
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  Trainer
+  Member
+}
+
+enum RecipeCategory {
+  high_protein
+  quick_prep
+  breakfast
+  lunch_dinner
+  vegetarian
+  snacks
+}
+
+enum Difficulty {
+  Easy
+  Medium
+  Hard
+}
+
+enum BookmarkSource {
+  instagram
+  youtube
+  app
+}
+
+enum SocialPlatform {
+  instagram
+  youtube
+}
+
+enum SocialContentType {
+  reel
+  post
+  video
+  short
+}
+
+enum LinkShareMethod {
+  share
+  paste
+}
+
+enum ScrapeStatus {
+  pending
+  ready
+  failed
+}
+
+enum ScrapeJobStatus {
+  queued
+  running
+  done
+  failed
+}
+
+enum HouseholdRole {
+  admin
+  member
+}
+
+enum MealType {
+  breakfast
+  lunch
+  dinner
+  snacks
+}
+
+/// draft: only the admin sees it. open: the timer is running. fixed: the plan is final.
+enum MealDayStatus {
+  draft
+  open
+  fixed
+}
+
+/// pending and declined apply to members' suggestions; the admin's own dishes are always approved.
+enum PlannedDishStatus {
+  approved
+  pending
+  declined
+}
+
+enum PrepStatus {
+  todo
+  in_progress
+  done
+}
+
+enum BookmarkCategory {
+  breakfast
+  lunch_dinner
+  snacks
+  high_protein
+  quick_prep
+  vegetarian
+  dessert
+}
+
+/// The app profile of a Supabase Auth account; `id` is the Supabase user id. Passwords, sessions and
+/// email confirmation live in Supabase.
+model User {
+  id               String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// Stored lowercase.
+  email            String            @unique @db.VarChar(320)
+  /// Stored lowercase; 3–30 of a-z 0-9 _ . starting with a letter. Null only for accounts created
+  /// before usernames existed.
+  username         String?           @unique @db.VarChar(30)
+  /// Trainer = household admin (cutoffs, locking, managing members); otherwise roles are equal.
+  role             UserRole          @default(Member)
+  /// Shown to the household; falls back to the username.
+  displayName      String?           @map("display_name") @db.VarChar(40)
+  /// Avatar background, e.g. #F5AFC4; falls back to a colour picked from the member's position.
+  avatarColor      String?           @map("avatar_color") @db.VarChar(9)
+  /// How the account signs in, as Supabase reports it: email now, google later.
+  authProvider     String            @default("email") @map("auth_provider") @db.VarChar(30)
+  /// Copied from Supabase on signup and login; null until the first login after confirming.
+  emailConfirmedAt DateTime?         @map("email_confirmed_at") @db.Timestamptz
+  lastLoginAt      DateTime?         @map("last_login_at") @db.Timestamptz
+  createdAt        DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  researchSessions ResearchSession[]
+  recipes          Recipe[]
+  bookmarks        Bookmark[]
+  sharedLinks      SharedLink[]
+  preferences      UserPreferences?
+  membership       HouseholdMember?
+  dishesAdded      PlannedDish[]     @relation("DishAddedBy")
+  prepAssignments  PlannedDish[]     @relation("DishPrepAssignee")
+  mealResponses    MealResponse[]
+  suggestedMeals   SuggestedMeal[]
+  likedMeals       LikedMeal[]
+  socialMediaMeals SocialMediaMeal[]
+
+  @@map("users")
+}
+
+/// Account-wide app settings (dark mode stays on each device).
+model UserPreferences {
+  userId        String   @id @map("user_id") @db.Uuid
+  mealReminders Boolean  @default(true) @map("meal_reminders")
+  showPrepTips  Boolean  @default(true) @map("show_prep_tips")
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_preferences")
+}
+
+model ResearchSession {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String?  @map("user_id") @db.Uuid
+  query     String
+  status    String   @default("pending") @db.VarChar(32)
+  result    Json?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([userId], map: "idx_research_sessions_user_id")
+  @@index([createdAt(sort: Desc)], map: "idx_research_sessions_created_at")
+  @@map("research_sessions")
+}
+
+/// A recipe without an owner is part of the shared PrepPros catalog; an owned recipe is a user's custom recipe.
+model Recipe {
+  id              String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ownerId         String?            @map("owner_id") @db.Uuid
+  title           String             @db.VarChar(100)
+  category        RecipeCategory
+  prepTimeMinutes Int                @map("prep_time_minutes")
+  cookTimeMinutes Int?               @map("cook_time_minutes")
+  servings        Int
+  difficulty      Difficulty         @default(Easy)
+  imageUrl        String             @map("image_url")
+  createdAt       DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  owner           User?              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  ingredients     RecipeIngredient[]
+  steps           RecipeStep[]
+  bookmarks       Bookmark[]
+  plannedDishes   PlannedDish[]
+  suggestedMeals  SuggestedMeal[]
+  likedMeals      LikedMeal[]
+
+  @@index([ownerId])
+  @@index([category])
+  @@map("recipes")
+}
+
+model RecipeIngredient {
+  id       String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  recipeId String  @map("recipe_id") @db.Uuid
+  position Int
+  name     String
+  amount   String?
+  recipe   Recipe  @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@unique([recipeId, position])
+  @@map("recipe_ingredients")
+}
+
+model RecipeStep {
+  recipeId    String @map("recipe_id") @db.Uuid
+  stepNumber  Int    @map("step_number")
+  instruction String
+  recipe      Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@id([recipeId, stepNumber])
+  @@map("recipe_steps")
+}
+
+/// Saved Instagram/YouTube links, or ("app" source) a bookmarked recipe with a snapshot of its details.
+model Bookmark {
+  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String            @map("user_id") @db.Uuid
+  recipeId        String?           @map("recipe_id") @db.Uuid
+  source          BookmarkSource
+  title           String            @db.VarChar(150)
+  url             String            @default("")
+  thumbnailUrl    String            @map("thumbnail_url")
+  author          String            @db.VarChar(100)
+  /// Null until it can be worked out, e.g. while a link's content is still being read.
+  category        BookmarkCategory?
+  prepTimeMinutes Int?              @map("prep_time_minutes")
+  cookTimeMinutes Int?              @map("cook_time_minutes")
+  servings        Int?
+  ingredients     String[]
+  notes           String?
+  /// The scraped Instagram/YouTube content this bookmark points to, when it has been read.
+  socialPostId    String?           @map("social_post_id") @db.Uuid
+  /// Imported from a bare link: title, ingredients etc. are filled in once the post has been read.
+  awaitingContent Boolean           @default(false) @map("awaiting_content")
+  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipe          Recipe?           @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  socialPost      SocialPost?       @relation(fields: [socialPostId], references: [id], onDelete: SetNull)
+  plannedDishes   PlannedDish[]
+
+  @@unique([userId, recipeId])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([socialPostId])
+  @@map("bookmarks")
+}
+
+/// One Instagram reel/post (or, later, YouTube video), shared by every user who saves it.
+/// Typed columns hold what the API filters and shows; `raw` keeps the source's full record
+/// (Instagram: the Bright Data record; YouTube: { video: Data API item, captions: timed segments }).
+model SocialPost {
+  id                 String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  platform           SocialPlatform
+  contentType        SocialContentType     @map("content_type")
+  /// Instagram shortcode or YouTube video id; unique per platform.
+  shortcode          String                @db.VarChar(64)
+  url                String
+  /// The platform's own numeric id (Instagram `post_id`).
+  externalId         String?               @map("external_id") @db.VarChar(64)
+  authorUsername     String?               @map("author_username") @db.VarChar(100)
+  authorProfileUrl   String?               @map("author_profile_url")
+  authorAvatarUrl    String?               @map("author_avatar_url")
+  authorFollowers    Int?                  @map("author_followers")
+  authorIsVerified   Boolean?              @map("author_is_verified")
+  /// Video title (YouTube); Instagram posts have none.
+  title              String?
+  /// Instagram caption or YouTube description.
+  caption            String?
+  /// Spoken words from the video's captions (YouTube); Instagram has none.
+  transcript         String?
+  transcriptLanguage String?               @map("transcript_language") @db.VarChar(16)
+  /// Lowercase, without the leading '#'.
+  hashtags           String[]              @default([])
+  /// Instagram media links are signed and expire after a few days; refresh by scraping again.
+  thumbnailUrl       String?               @map("thumbnail_url")
+  videoUrl           String?               @map("video_url")
+  /// Every image in an Instagram carousel. `thumbnailUrl` remains the preferred list-card image.
+  photos             String[]              @default([])
+  /// Every video in an Instagram carousel. `videoUrl` remains the preferred playable video.
+  videos             String[]              @default([])
+  durationSeconds    Float?                @map("duration_seconds") @db.Real
+  likesCount         BigInt?               @map("likes_count")
+  commentsCount      Int?                  @map("comments_count")
+  viewsCount         BigInt?               @map("views_count")
+  postedAt           DateTime?             @map("posted_at") @db.Timestamptz
+  status             ScrapeStatus          @default(pending)
+  /// Why the last scrape failed (e.g. dead_page), when status is failed.
+  scrapeError        String?               @map("scrape_error")
+  scrapedAt          DateTime?             @map("scraped_at") @db.Timestamptz
+  /// The source's complete record, as returned.
+  raw                Json?                 @db.JsonB
+  createdAt          DateTime              @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime              @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  /// When this row was last copied to Supabase; null or older than updatedAt means a copy is due.
+  supabaseSyncedAt   DateTime?             @map("supabase_synced_at") @db.Timestamptz
+  /// When this row was last written to the Storage backup; null or older than updatedAt means one is due.
+  supabaseBackedUpAt DateTime?             @map("supabase_backed_up_at") @db.Timestamptz
+  bookmarks          Bookmark[]
+  embeddings         SocialPostEmbedding[]
+  sharedLinks        SharedLink[]
+  scrapeJob          ScrapeJob?
+  socialMediaMeals   SocialMediaMeal[]
+
+  @@unique([platform, shortcode])
+  @@index([authorUsername])
+  @@index([postedAt(sort: Desc)])
+  @@index([hashtags], type: Gin)
+  @@index([photos], type: Gin)
+  @@index([videos], type: Gin)
+  @@index([raw(ops: JsonbPathOps)], type: Gin)
+  @@index([caption(ops: raw("gin_trgm_ops"))], type: Gin, map: "social_posts_caption_trgm_idx")
+  @@index([supabaseSyncedAt])
+  @@index([supabaseBackedUpAt])
+  @@map("social_posts")
+}
+
+/// A catalog recipe recommended to a user. The score and reason preserve why it was suggested.
+model SuggestedMeal {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  recipeId  String   @map("recipe_id") @db.Uuid
+  reason    String?
+  score     Float?   @db.Real
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipe    Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, recipeId])
+  @@index([userId, score(sort: Desc)])
+  @@map("suggested_meals")
+}
+
+/// A catalog recipe explicitly liked by a user.
+model LikedMeal {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  recipeId  String   @map("recipe_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipe    Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, recipeId])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("liked_meals")
+}
+
+/// An Instagram or YouTube post a user wants available as a meal source.
+/// Platform, URL, title, thumbnail, and scraped content remain normalized in SocialPost.
+model SocialMediaMeal {
+  id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId       String     @map("user_id") @db.Uuid
+  socialPostId String     @map("social_post_id") @db.Uuid
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  socialPost   SocialPost @relation(fields: [socialPostId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, socialPostId])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([socialPostId])
+  @@map("social_media_meals")
+}
+
+/// Every Instagram/YouTube link a user gave the app (shared into it or pasted), one row per user per post.
+model SharedLink {
+  id                 String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId             String          @map("user_id") @db.Uuid
+  socialPostId       String          @map("social_post_id") @db.Uuid
+  /// The link exactly as the user provided it the last time.
+  url                String
+  /// How the user provided it the last time.
+  via                LinkShareMethod @default(paste)
+  shareCount         Int             @default(1) @map("share_count")
+  firstSharedAt      DateTime        @default(now()) @map("first_shared_at") @db.Timestamptz
+  lastSharedAt       DateTime        @default(now()) @map("last_shared_at") @db.Timestamptz
+  updatedAt          DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  /// When this row was last copied to Supabase; null or older than updatedAt means a copy is due.
+  supabaseSyncedAt   DateTime?       @map("supabase_synced_at") @db.Timestamptz
+  /// When this row was last written to the Storage backup; null or older than updatedAt means one is due.
+  supabaseBackedUpAt DateTime?       @map("supabase_backed_up_at") @db.Timestamptz
+  user               User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  socialPost         SocialPost      @relation(fields: [socialPostId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, socialPostId])
+  @@index([supabaseSyncedAt])
+  @@index([supabaseBackedUpAt])
+  @@map("shared_links")
+}
+
+/// Work queue for reading posts: one job per post, however many users saved it. It lives in Postgres
+/// so queued work survives restarts. Bright Data takes about a minute per Instagram post, so an Instagram
+/// job starts a scrape, keeps its `snapshotId`, and comes back later instead of holding a worker.
+model ScrapeJob {
+  id                String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  socialPostId      String          @unique @map("social_post_id") @db.Uuid
+  status            ScrapeJobStatus @default(queued)
+  /// Failed tries so far; polling a running scrape does not count.
+  attempts          Int             @default(0)
+  /// The job is not picked up before this time.
+  runAt             DateTime        @default(now()) @map("run_at") @db.Timestamptz
+  /// Set while a worker holds the job; once past, a crashed worker's job can be picked up again.
+  lockedUntil       DateTime?       @map("locked_until") @db.Timestamptz
+  /// Bright Data's id for the scrape in progress.
+  snapshotId        String?         @map("snapshot_id") @db.VarChar(64)
+  snapshotStartedAt DateTime?       @map("snapshot_started_at") @db.Timestamptz
+  lastError         String?         @map("last_error")
+  /// When this run joined the queue; retrying a finished job starts it again.
+  enqueuedAt        DateTime        @default(now()) @map("enqueued_at") @db.Timestamptz
+  /// When this run succeeded. With `enqueuedAt`, gives the wait used for the average shown to users.
+  finishedAt        DateTime?       @map("finished_at") @db.Timestamptz
+  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  socialPost        SocialPost      @relation(fields: [socialPostId], references: [id], onDelete: Cascade)
+
+  @@index([status, runAt])
+  @@map("scrape_jobs")
+}
+
+/// People who plan meals together. Whoever creates it is the admin; others join with the invite code.
+model Household {
+  id         String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name       String            @db.VarChar(60)
+  /// In the invite link. Resetting it stops old links working.
+  inviteCode String            @unique @map("invite_code") @db.VarChar(12)
+  createdAt  DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  members    HouseholdMember[]
+  days       MealDay[]
+  dishes     PlannedDish[]
+  responses  MealResponse[]
+  checks     ShoppingCheck[]
+
+  @@map("households")
+}
+
+/// `userId` is unique: a person belongs to one household at a time.
+model HouseholdMember {
+  id          String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  householdId String        @map("household_id") @db.Uuid
+  userId      String        @unique @map("user_id") @db.Uuid
+  role        HouseholdRole @default(member)
+  joinedAt    DateTime      @default(now()) @map("joined_at") @db.Timestamptz
+  household   Household     @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([householdId])
+  @@map("household_members")
+}
+
+/// One day of a household's plan, and its timer.
+model MealDay {
+  householdId  String        @map("household_id") @db.Uuid
+  date         DateTime      @db.Date
+  status       MealDayStatus @default(draft)
+  /// When the timer ends and the day becomes fixed; set while open.
+  votingEndsAt DateTime?     @map("voting_ends_at") @db.Timestamptz
+  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  household    Household     @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@id([householdId, date])
+  @@index([status, votingEndsAt])
+  @@map("meal_days")
+}
+
+/// A dish on the plan, or a member's suggestion for it. Recipe details are copied in, so a dish
+/// survives its source bookmark or recipe being deleted.
+model PlannedDish {
+  id             String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  householdId    String            @map("household_id") @db.Uuid
+  date           DateTime          @db.Date
+  meal           MealType
+  name           String            @db.VarChar(150)
+  notes          String?
+  imageUrl       String?           @map("image_url")
+  recipeId       String?           @map("recipe_id") @db.Uuid
+  bookmarkId     String?           @map("bookmark_id") @db.Uuid
+  prepMinutes    Int?              @map("prep_minutes")
+  cookMinutes    Int?              @map("cook_minutes")
+  /// How many the source recipe makes.
+  baseServings   Int?              @map("base_servings")
+  ingredients    String[]          @default([])
+  steps          String[]          @default([])
+  isSuggestion   Boolean           @default(false) @map("is_suggestion")
+  status         PlannedDishStatus @default(approved)
+  addedById      String?           @map("added_by_id") @db.Uuid
+  prepStatus     PrepStatus        @default(todo) @map("prep_status")
+  prepAssigneeId String?           @map("prep_assignee_id") @db.Uuid
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  household      Household         @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  recipe         Recipe?           @relation(fields: [recipeId], references: [id], onDelete: SetNull)
+  bookmark       Bookmark?         @relation(fields: [bookmarkId], references: [id], onDelete: SetNull)
+  addedBy        User?             @relation("DishAddedBy", fields: [addedById], references: [id], onDelete: SetNull)
+  prepAssignee   User?             @relation("DishPrepAssignee", fields: [prepAssigneeId], references: [id], onDelete: SetNull)
+  responses      MealResponse[]
+
+  @@index([householdId, date])
+  @@map("planned_dishes")
+}
+
+/// What a person will eat for one meal: one choice per person per meal per day.
+model MealResponse {
+  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  householdId String      @map("household_id") @db.Uuid
+  date        DateTime    @db.Date
+  meal        MealType
+  userId      String      @map("user_id") @db.Uuid
+  dishId      String      @map("dish_id") @db.Uuid
+  /// Filled in when the timer ended without an answer, so the cook still counts this person.
+  isDefault   Boolean     @default(false) @map("is_default")
+  createdAt   DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  household   Household   @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dish        PlannedDish @relation(fields: [dishId], references: [id], onDelete: Cascade)
+
+  @@unique([householdId, date, meal, userId])
+  @@index([dishId])
+  @@map("meal_responses")
+}
+
+/// A ticked line on a week's shopping list; the list itself comes from that week's dishes.
+model ShoppingCheck {
+  householdId String    @map("household_id") @db.Uuid
+  weekStart   DateTime  @map("week_start") @db.Date
+  itemKey     String    @map("item_key") @db.VarChar(200)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@id([householdId, weekStart, itemKey])
+  @@map("shopping_checks")
+}
+
+/// Vector embeddings of a post's text, for semantic search by the future MCP server / LLM.
+/// Several models can coexist (one row per post per model); `embedding` has no fixed dimension, so a
+/// model's similarity index is added once it is chosen, e.g.
+///   CREATE INDEX ... USING hnsw ((embedding::vector(768)) vector_cosine_ops) WHERE model = '<model>';
+/// Rows are written with raw SQL, since Prisma cannot write the vector column.
+model SocialPostEmbedding {
+  id           String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  socialPostId String                @map("social_post_id") @db.Uuid
+  /// Embedding model name, e.g. "nomic-embed-text".
+  model        String                @db.VarChar(100)
+  dimensions   Int
+  /// The exact text that was embedded.
+  content      String
+  embedding    Unsupported("vector")
+  createdAt    DateTime              @default(now()) @map("created_at") @db.Timestamptz
+  socialPost   SocialPost            @relation(fields: [socialPostId], references: [id], onDelete: Cascade)
+
+  @@unique([socialPostId, model])
+  @@index([model])
+  @@map("social_post_embeddings")
+}

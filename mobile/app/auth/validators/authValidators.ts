@@ -1,7 +1,7 @@
 import type { SignupCredentials } from '../types/auth';
 
 export function validateLogin(identifier: string, password: string): string | null {
-  if (!identifier.trim()) return 'Enter your email or username.';
+  if (!identifier.trim()) return 'Enter your email.';
   if (!password) return 'Enter your password.';
   return null;
 }

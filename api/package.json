@@ -3,9 +3,39 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "scripts": { "start": "node src/index.js" },
+  "scripts": {
+    "start": "node dist/server.js",
+    "dev": "tsx watch --env-file-if-exists=.env src/server.ts",
+    "build": "prisma generate && tsc",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "node prisma/deploy.mjs",
+    "db:seed": "tsx --env-file-if-exists=.env prisma/seed.ts",
+    "seed:demo": "tsx --env-file-if-exists=.env scripts/demo-household.ts",
+    "supabase:migrate": "tsx --env-file-if-exists=.env scripts/supabase-migrate.ts"
+  },
   "dependencies": {
-    "express": "5.3.0",
-    "pg": "8.23.1"
+    "@prisma/adapter-pg": "^7.10.1",
+    "@prisma/client": "^7.10.1",
+    "dotenv": "^18.0.9",
+    "express": "^5.3.0",
+    "express-rate-limit": "^8.7.2",
+    "jose": "^6.2.14",
+    "pg": "^8.23.1",
+    "prisma": "^7.10.1",
+    "youtube-caption-extractor": "^1.10.3",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.6.6",
+    "@types/pg": "^8.23.1",
+    "@types/supertest": "^7.2.1",
+    "supertest": "^7.3.1",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
   }
 }
