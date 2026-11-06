@@ -11,13 +11,11 @@ import { haptics } from '@/app/shared/services/haptics';
 import { addDays } from '../utils/dateUtils';
 import { isPlanningEditable } from '../utils/planningHorizonUtils';
 import { swipedPage } from '../utils/swipeUtils';
-import type { AddDishPayload, DishActionResult } from '../types/calendar';
 import { DayPage } from './DayPage';
 
 interface DayMealsPanelProps {
   dateKey: string;
   onSelectDate: (dateStr: string) => void;
-  onAddDish: (payload: Omit<AddDishPayload, 'date'>) => Promise<DishActionResult>;
 }
 
 /**
@@ -28,7 +26,7 @@ interface DayMealsPanelProps {
  * it with `scrollTo` doesn't work here: on a phone the call has no effect, the row stays at the edge it
  * landed on, and swiping stops after one day.
  */
-export function DayMealsPanel({ dateKey, onSelectDate, onAddDish }: DayMealsPanelProps) {
+export function DayMealsPanel({ dateKey, onSelectDate }: DayMealsPanelProps) {
   const { width } = useWindowDimensions();
 
   const previousDay = addDays(dateKey, -1);
@@ -57,7 +55,7 @@ export function DayMealsPanel({ dateKey, onSelectDate, onAddDish }: DayMealsPane
     >
       {pages.map((date) => (
         <View key={date} style={{ width }}>
-          <DayPage dateKey={date} onAddDish={onAddDish} />
+          <DayPage dateKey={date} />
         </View>
       ))}
     </ScrollView>

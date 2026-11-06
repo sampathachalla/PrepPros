@@ -1,47 +1,41 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Apple, Moon, Plus, Sun, Utensils } from 'lucide-react-native';
 import { haptics } from '@/app/shared/services/haptics';
 import { useCalendarColors } from '../hooks/useCalendarColors';
 import { MEAL_CATEGORY_COLORS } from '../constants/calendar';
 import type { dayPermissions } from '../utils/dayPlanUtils';
-import type {
-  AddDishPayload,
-  DishActionResult,
-  DishOption,
-  HouseholdMember,
-  MealCategory,
-  ScheduledDish,
-} from '../types/calendar';
+import { countPeopleAnswered } from '../utils/householdUtils';
+import type { HouseholdMember, MealCategory, ScheduledDish } from '../types/calendar';
 import { DishCard } from './DishCard';
-import { MealPickerSheet } from './MealPickerSheet';
 
 interface MealSectionProps {
+  dateKey: string;
   category: MealCategory;
   label: string;
   dishes: ScheduledDish[];
   members: HouseholdMember[];
   myId: string;
   permissions: ReturnType<typeof dayPermissions>;
-  onAddDish: (payload: Omit<AddDishPayload, 'date'>) => Promise<DishActionResult>;
   /** Every row but the first draws the line separating it from the one above. */
   showDivider: boolean;
 }
 
 const CATEGORY_ICONS = { breakfast: Sun, lunch: Utensils, dinner: Moon, snacks: Apple } as const;
 
-/** One meal's row: the dishes the admin has set. Suggestions wait in the sheet behind its button. */
+/** One meal's row: the dishes the admin has set. Its button opens this meal on the Plan tab. */
 export function MealSection({
+  dateKey,
   category,
   label,
   dishes,
   members,
   myId,
   permissions,
-  onAddDish,
   showDivider,
 }: MealSectionProps) {
-  const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const router = useRouter();
   const colors = useCalendarColors();
   const accent = MEAL_CATEGORY_COLORS[category];
   const Icon = CATEGORY_ICONS[category];
@@ -49,26 +43,12 @@ export function MealSection({
   const canAdd = permissions.canEditPlan || permissions.canSuggest;
   const buttonLabel = permissions.canEditPlan ? 'Add' : 'Suggest';
   const approved = dishes.filter((dish) => dish.status === 'approved');
-  const suggestions = dishes.filter((dish) => dish.status !== 'approved');
-  const pendingCount = suggestions.filter((dish) => dish.status === 'pending').length;
-  const answered = approved.reduce((count, dish) => count + dish.memberIds.length, 0);
+  const pendingCount = dishes.filter((dish) => dish.status === 'pending').length;
+  const answered = countPeopleAnswered(members, approved);
 
-  const openPicker = () => {
+  const openInPlan = () => {
     haptics.selection();
-    setIsPickerOpen(true);
-  };
-
-  const handlePick = async (option: DishOption | { name: string }) => {
-    const { name, recipeId, bookmarkId, fromDishId } = option as DishOption;
-    const source = recipeId ? { recipeId } : bookmarkId ? { bookmarkId } : fromDishId ? { fromDishId } : { name };
-    const result = await onAddDish({ category, ...source });
-    if (result.success) {
-      haptics.success();
-      setIsPickerOpen(false);
-    } else {
-      haptics.error();
-    }
-    return result;
+    router.navigate({ pathname: '/(tabs)/plan', params: { date: dateKey, meal: category } });
   };
 
   return (
@@ -80,16 +60,16 @@ export function MealSection({
         <Text style={[styles.label, { color: colors.text }]}>{label}</Text>
 
         {approved.length > 0 ? (
-          <View style={[styles.countBadge, { backgroundColor: `${accent}40` }]}>
+          <View style={[styles.countBadge, { backgroundColor: `${accent}40` }]} accessibilityLabel={`${answered} of ${members.length} people answered`}>
             <Text style={[styles.countText, { color: colors.text }]}>
-              {answered}/{members.length}
+              {answered} of {members.length}
             </Text>
           </View>
         ) : null}
 
         {canAdd ? (
           <TouchableOpacity
-            onPress={openPicker}
+            onPress={openInPlan}
             activeOpacity={0.7}
             hitSlop={6}
             style={[styles.button, { borderColor: accent }]}
@@ -116,18 +96,6 @@ export function MealSection({
           {canAdd ? 'Nothing planned yet' : 'No dishes for this meal'}
         </Text>
       ) : null}
-
-      <MealPickerSheet
-        visible={isPickerOpen}
-        title={`${buttonLabel}: ${label}`}
-        category={category}
-        suggestions={suggestions}
-        accent={accent}
-        myId={myId}
-        canDecide={permissions.canDecide}
-        onPick={handlePick}
-        onClose={() => setIsPickerOpen(false)}
-      />
     </View>
   );
 }

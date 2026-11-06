@@ -16,9 +16,9 @@ describe('day state', () => {
 });
 
 describe('dayPermissions', () => {
-  it('lets the admin plan a draft, but nobody answer it', () => {
-    expect(dayPermissions(draft, true, false, NOW)).toMatchObject({ canEditPlan: true, canStartTimer: true, canAnswer: false });
-    expect(dayPermissions(draft, false, false, NOW)).toMatchObject({ canEditPlan: false, canSuggest: false, canAnswer: false });
+  it('lets the admin plan a draft and members pick for it, but nobody answer it', () => {
+    expect(dayPermissions(draft, true, false, NOW)).toMatchObject({ canEditPlan: true, canStartTimer: true, canDecide: true, canAnswer: false });
+    expect(dayPermissions(draft, false, false, NOW)).toMatchObject({ canEditPlan: false, canSuggest: true, canAnswer: false });
     expect(dayPermissions(undefined, true, false, NOW)).toMatchObject({ canEditPlan: true });
   });
 
@@ -29,6 +29,7 @@ describe('dayPermissions', () => {
 
   it('a fixed day is closed, though the admin can reopen it', () => {
     expect(dayPermissions(fixed, false, false, NOW)).toMatchObject({ canAnswer: false, canSuggest: false });
+    expect(dayPermissions(fixed, true, false, NOW)).toMatchObject({ canDecide: false });
     expect(dayPermissions(fixed, true, false, NOW)).toMatchObject({ canEditPlan: false, canStartTimer: true });
   });
 

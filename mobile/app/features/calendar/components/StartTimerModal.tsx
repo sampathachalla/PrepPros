@@ -22,7 +22,7 @@ interface StartTimerModalProps {
 export function StartTimerModal({ visible, dateKey, otherDates, canFixNow, onClose }: StartTimerModalProps) {
   const colors = useCalendarColors();
   const [minutes, setMinutes] = useState(DEFAULT_TIMER_MINUTES);
-  const [includeWeek, setIncludeWeek] = useState(true);
+  const [includeWeek, setIncludeWeek] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

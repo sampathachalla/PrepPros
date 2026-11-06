@@ -70,6 +70,16 @@ describe('calendar store', () => {
     expect(store().loadedDates['2026-11-08']).toBeUndefined();
   });
 
+  it('copies picks to a week later, counting only those that made it', async () => {
+    service.addDish.mockResolvedValueOnce(dish('copied')).mockRejectedValueOnce(new Error('already there'));
+
+    const copied = await store().copyPicks([dish('a'), dish('b', { date: '2026-11-06' })]);
+
+    expect(copied).toBe(1);
+    expect(service.addDish).toHaveBeenCalledWith({ date: '2026-11-12', category: 'dinner', fromDishId: 'a' });
+    expect(service.addDish).toHaveBeenCalledWith({ date: '2026-11-13', category: 'dinner', fromDishId: 'b' });
+  });
+
   it('forgets what was loaded when cleared', async () => {
     service.getRange.mockResolvedValue(response([]));
     await store().loadRange('2026-11-01', '2026-11-07');

@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
 import {
   CalendarDays,
+  ClipboardList,
   MessageSquare,
   Bookmark,
   User,
@@ -77,6 +78,15 @@ export default function TabsLayout() {
           title: 'Calendar',
           tabBarIcon: ({ color, size }) => (
             <CalendarDays size={size ?? 22} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="plan"
+        options={{
+          title: 'Plan',
+          tabBarIcon: ({ color, size }) => (
+            <ClipboardList size={size ?? 22} color={color} />
           ),
         }}
       />

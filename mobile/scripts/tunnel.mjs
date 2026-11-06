@@ -6,8 +6,13 @@ const mobileDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..
 const apiDir = path.resolve(mobileDir, '..', 'api');
 const apiPort = Number(process.env.API_PORT || 8000);
 const expoMode = process.env.EXPO_TUNNEL_MODE === 'dev-client' ? 'dev-client' : 'go';
+const persistent = process.env.PREPPROS_PERSISTENT === '1';
+const backendTarget = process.env.EXPO_PUBLIC_BACKEND_TARGET || (persistent ? 'oci' : 'tunnel');
+const watchdogIntervalMs = Number(process.env.TUNNEL_WATCHDOG_INTERVAL_MS || 15_000);
 const children = new Set();
 let stopping = false;
+let expoPublicUrl;
+let watchdogTimer;
 
 const delay = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
@@ -18,6 +23,25 @@ function start(command, args, options = {}) {
   });
   children.add(child);
   child.once('exit', () => children.delete(child));
+  return child;
+}
+
+function startWithOutput(command, args, options = {}, onOutput = () => {}) {
+  const child = spawn(command, args, {
+    stdio: ['inherit', 'pipe', 'pipe'],
+    ...options,
+  });
+  children.add(child);
+  child.once('exit', () => children.delete(child));
+  for (const [stream, destination] of [
+    [child.stdout, process.stdout],
+    [child.stderr, process.stderr],
+  ]) {
+    stream.on('data', (chunk) => {
+      destination.write(chunk);
+      onOutput(chunk.toString());
+    });
+  }
   return child;
 }
 
@@ -55,9 +79,43 @@ async function getNgrokUrl() {
   }
 }
 
+async function publicEndpointHealthy(url, path = '/health') {
+  if (!url) return false;
+  return isHealthy(`${url.replace(/\/+$/, '')}${path}`);
+}
+
+function startWatchdog(publicApiUrl, ngrok, expo) {
+  let apiFailures = 0;
+  let expoFailures = 0;
+  let checking = false;
+
+  watchdogTimer = setInterval(async () => {
+    if (checking || stopping) return;
+    checking = true;
+    try {
+      apiFailures = (await publicEndpointHealthy(publicApiUrl)) ? 0 : apiFailures + 1;
+      if (expoPublicUrl) {
+        expoFailures = (await publicEndpointHealthy(expoPublicUrl, '/status')) ? 0 : expoFailures + 1;
+      }
+
+      if (apiFailures >= 2) {
+        console.error('[tunnel] Public API relay is stale; restarting the tunnel process.');
+        ngrok.kill('SIGTERM');
+      } else if (expoFailures >= 2) {
+        console.error('[tunnel] Public Expo relay is stale; restarting the tunnel process.');
+        expo.kill('SIGTERM');
+      }
+    } finally {
+      checking = false;
+    }
+  }, watchdogIntervalMs);
+  watchdogTimer.unref();
+}
+
 function stop(exitCode = 0) {
   if (stopping) return;
   stopping = true;
+  if (watchdogTimer) clearInterval(watchdogTimer);
   for (const child of children) child.kill('SIGINT');
   setTimeout(() => {
     for (const child of children) child.kill('SIGTERM');
@@ -98,15 +156,32 @@ try {
 
   const publicApiUrl = await waitFor('the ngrok HTTPS URL', getNgrokUrl);
   console.log(`[tunnel] Public API: ${publicApiUrl}`);
+  console.log(`[tunnel] App backend target: ${backendTarget}`);
   console.log(`[tunnel] Starting Expo in ${expoMode === 'dev-client' ? 'development build' : 'Expo Go'} mode...`);
 
   const expoArgs = ['expo', 'start', '--tunnel'];
   if (expoMode === 'dev-client') expoArgs.push('--dev-client');
-  const expo = start('npx', expoArgs, {
+  let expoOutput = '';
+  const expo = startWithOutput('npx', expoArgs, {
     cwd: mobileDir,
-    env: { ...process.env, EXPO_PUBLIC_API_URL: publicApiUrl },
+    env: {
+      ...process.env,
+      EXPO_PUBLIC_BACKEND_TARGET: backendTarget,
+      EXPO_PUBLIC_LOCAL_API_URL: process.env.EXPO_PUBLIC_LOCAL_API_URL || `http://127.0.0.1:${apiPort}`,
+      EXPO_PUBLIC_TUNNEL_API_URL: publicApiUrl,
+      EXPO_PUBLIC_OCI_API_URL: process.env.EXPO_PUBLIC_OCI_API_URL || publicApiUrl,
+      EXPO_PUBLIC_API_URL: publicApiUrl,
+    },
+  }, (output) => {
+    expoOutput = `${expoOutput}${output}`.slice(-4_096);
+    const match = expoOutput.match(/https?:\/\/([a-zA-Z0-9.-]+\.(?:on\.expo\.app|exp\.direct))/);
+    if (match && expoPublicUrl !== `https://${match[1]}`) {
+      expoPublicUrl = `https://${match[1]}`;
+      console.log(`[tunnel] Expo public relay: ${expoPublicUrl}`);
+    }
   });
   expo.once('exit', (code) => stop(code || 0));
+  startWatchdog(publicApiUrl, ngrok, expo);
 } catch (error) {
   console.error(`[tunnel] ${error instanceof Error ? error.message : String(error)}`);
   stop(1);

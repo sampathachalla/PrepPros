@@ -1,16 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AppState } from 'react-native';
 import { useFocusEffect } from 'expo-router';
-import { ApiError } from '@/app/shared/services/apiClient';
 import { useHouseholdStore } from '../../household/store/householdStore';
 import { CALENDAR_POLL_INTERVAL_MS, TODAY_CHECK_INTERVAL_MS } from '../constants/calendar';
 import { useCalendarStore } from '../store/calendarStore';
-import type { AddDishPayload, DishActionResult } from '../types/calendar';
 import { addDays, getTodayDateKey, getWeekDays } from '../utils/dateUtils';
-import { canAdvanceWeekFrom, isPlanningEditable } from '../utils/planningHorizonUtils';
-
-const errorMessage = (error: unknown) =>
-  error instanceof ApiError ? error.message : 'Something went wrong. Please try again.';
+import { canAdvanceWeekFrom } from '../utils/planningHorizonUtils';
 
 export function useCalendar() {
   const selectedDate = useCalendarStore((s) => s.selectedDate);
@@ -84,21 +79,6 @@ export function useCalendar() {
     }, [householdId, firstVisible, lastVisible, loadRange]),
   );
 
-  const handleAddDish = useCallback(
-    async (payload: Omit<AddDishPayload, 'date'>): Promise<DishActionResult> => {
-      if (!isPlanningEditable(selectedDate)) {
-        return { success: false, error: 'Planning is locked for this date' };
-      }
-      try {
-        await useCalendarStore.getState().addDish({ ...payload, date: selectedDate });
-        return { success: true };
-      } catch (error) {
-        return { success: false, error: errorMessage(error) };
-      }
-    },
-    [selectedDate],
-  );
-
   return {
     selectedDate,
     weekDays,
@@ -107,6 +87,5 @@ export function useCalendar() {
     goToPrevious,
     goToNext,
     canGoToNextWeek,
-    handleAddDish,
   };
 }

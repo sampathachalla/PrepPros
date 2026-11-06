@@ -8,20 +8,18 @@ import { EMPTY_CATEGORY_DISHES, useCalendarStore } from '../store/calendarStore'
 import { getTodayDateKey } from '../utils/dateUtils';
 import { dayPermissions } from '../utils/dayPlanUtils';
 import { isPlanningEditable } from '../utils/planningHorizonUtils';
-import type { AddDishPayload, DishActionResult } from '../types/calendar';
 import { DayPlanBar } from './DayPlanBar';
 import { MealSection } from './MealSection';
 
 interface DayPageProps {
   dateKey: string;
-  onAddDish: (payload: Omit<AddDishPayload, 'date'>) => Promise<DishActionResult>;
 }
 
 /**
  * One day in a box: its status, then a table with a row per meal. Takes all the height it is given and
  * shares it between the rows; it only scrolls once dishes need more room than the screen has.
  */
-export function DayPage({ dateKey, onAddDish }: DayPageProps) {
+export function DayPage({ dateKey }: DayPageProps) {
   const colors = useCalendarColors();
   // Every second, so swipes stop the moment a timer runs out
   const now = useNow(1000);
@@ -63,13 +61,13 @@ export function DayPage({ dateKey, onAddDish }: DayPageProps) {
             MEAL_CATEGORIES.map((category, index) => (
               <MealSection
                 key={category.key}
+                dateKey={dateKey}
                 category={category.key}
                 label={category.label}
                 dishes={dishes[category.key] ?? []}
                 members={members}
                 myId={myId}
                 permissions={permissions}
-                onAddDish={onAddDish}
                 showDivider={index > 0}
               />
             ))

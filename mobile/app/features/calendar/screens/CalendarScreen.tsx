@@ -29,7 +29,6 @@ export default function CalendarScreen() {
     goToPrevious,
     goToNext,
     canGoToNextWeek,
-    handleAddDish,
   } = useCalendar();
 
   const [isWeekVisible, setIsWeekVisible] = useState(true);
@@ -91,7 +90,6 @@ export default function CalendarScreen() {
       <DayMealsPanel
         dateKey={selectedDate}
         onSelectDate={selectDate}
-        onAddDish={handleAddDish}
       />
     </View>
   );

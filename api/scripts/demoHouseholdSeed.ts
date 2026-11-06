@@ -1,4 +1,4 @@
-import type { MealType, Prisma, PrismaClient } from '../src/generated/prisma/client.js';
+import type { MealDayStatus, MealType, PrismaClient } from '../src/generated/prisma/client.js';
 import { addDays, fromDbDate, toDbDate } from '../src/utils/dates.js';
 
 export type DemoRole = 'admin' | 'member';
@@ -6,6 +6,9 @@ export type DemoRole = 'admin' | 'member';
 const DEMO_INVITE_CODE = 'DEMODEMO';
 const DEMO_EMAIL_DOMAIN = '@demo.preppros.test';
 const VOTING_HOURS = 24;
+/** Marks what this script planned, so removing it never touches anyone's real dishes. */
+const DEMO_NOTE = 'Demo dish';
+const MAX_HOUSEHOLD_MEMBERS = 6;
 
 const DEMO_PEOPLE = [
   { key: 'priya', displayName: 'Priya', avatarColor: '#F5AFC4' },
@@ -47,12 +50,98 @@ const FIXED_DAY: DemoDish[] = [
   { meal: 'dinner', name: 'Egg Fried Rice', chosenBy: ['priya', 'ravi', 'anu'] },
 ];
 
+/** What people have picked for next week, before the admin has planned anything. */
+const NEXT_WEEK_PICKS: { dayOfWeek: number; dishes: DemoDish[] }[] = [
+  {
+    dayOfWeek: 1,
+    dishes: [
+      { meal: 'lunch', name: 'Chole Bhature', suggestedBy: 'ravi' },
+      { meal: 'dinner', name: 'Palak Paneer', suggestedBy: 'priya' },
+    ],
+  },
+  { dayOfWeek: 3, dishes: [{ meal: 'breakfast', name: 'Dosa', suggestedBy: 'anu' }] },
+  { dayOfWeek: 5, dishes: [{ meal: 'dinner', name: 'Hakka Noodles', suggestedBy: 'ravi' }] },
+];
+
 const demoEmail = (key: DemoKey) => `${key}${DEMO_EMAIL_DOMAIN}`;
 
-/** Removes the demo household and its people. Everything planned in it goes with it. */
+/** Removes everything this script added: its household, its people, and any dishes it planned elsewhere. */
 export async function removeDemoHousehold(prisma: PrismaClient) {
+  const dishes = await prisma.plannedDish.findMany({
+    where: { notes: DEMO_NOTE },
+    select: { householdId: true, date: true },
+  });
+  await prisma.plannedDish.deleteMany({ where: { notes: DEMO_NOTE } });
+
+  // A day left with nothing on it goes too, so a real household gets back to where it was
+  for (const { householdId, date } of dishes) {
+    const remaining = await prisma.plannedDish.count({ where: { householdId, date } });
+    if (remaining === 0) await prisma.mealDay.deleteMany({ where: { householdId, date } });
+  }
+
   await prisma.household.deleteMany({ where: { inviteCode: DEMO_INVITE_CODE } });
   await prisma.user.deleteMany({ where: { email: { endsWith: DEMO_EMAIL_DOMAIN } } });
+}
+
+async function createDemoPeople(prisma: PrismaClient) {
+  const people = {} as Record<DemoKey, string>;
+  for (const { key, displayName, avatarColor } of DEMO_PEOPLE) {
+    const person = await prisma.user.create({
+      data: { email: demoEmail(key), username: `demo_${key}`, displayName, avatarColor },
+    });
+    people[key] = person.id;
+  }
+  return people;
+}
+
+/** Yesterday fixed, today with a timer running, tomorrow a draft, and picks waiting for next week. */
+async function planDemoDays(
+  prisma: PrismaClient,
+  householdId: string,
+  adminId: string,
+  people: Record<DemoKey, string>,
+  now: Date,
+) {
+  const addDay = async (date: Date, status: MealDayStatus, dishes: DemoDish[], votingEndsAt: Date | null = null) => {
+    await prisma.mealDay.upsert({
+      where: { householdId_date: { householdId, date } },
+      create: { householdId, date, status, votingEndsAt },
+      update: { status, votingEndsAt },
+    });
+    for (const { meal, name, chosenBy = [], suggestedBy } of dishes) {
+      const dish = await prisma.plannedDish.create({
+        data: {
+          householdId,
+          date,
+          meal,
+          name,
+          notes: DEMO_NOTE,
+          prepMinutes: 10,
+          cookMinutes: 25,
+          baseServings: 4,
+          isSuggestion: suggestedBy !== undefined,
+          status: suggestedBy ? 'pending' : 'approved',
+          addedById: suggestedBy ? people[suggestedBy] : adminId,
+        },
+      });
+      for (const key of chosenBy) {
+        await prisma.mealResponse.create({
+          data: { householdId, date, meal, userId: people[key], dishId: dish.id },
+        });
+      }
+    }
+  };
+
+  const today = toDbDate(fromDbDate(now));
+  await addDay(addDays(today, -1), 'fixed', FIXED_DAY);
+  await addDay(today, 'open', OPEN_DAY, new Date(now.getTime() + VOTING_HOURS * 60 * 60 * 1000));
+  await addDay(addDays(today, 1), 'draft', DRAFT_DAY);
+
+  const nextSunday = addDays(today, 7 - today.getUTCDay());
+  for (const { dayOfWeek, dishes } of NEXT_WEEK_PICKS) {
+    await addDay(addDays(nextSunday, dayOfWeek), 'draft', dishes);
+  }
+  return fromDbDate(today);
 }
 
 export async function seedDemoHousehold(prisma: PrismaClient, email: string, role: DemoRole, now = new Date()) {
@@ -69,13 +158,7 @@ export async function seedDemoHousehold(prisma: PrismaClient, email: string, rol
 
   await removeDemoHousehold(prisma);
 
-  const people = {} as Record<DemoKey, string>;
-  for (const { key, displayName, avatarColor } of DEMO_PEOPLE) {
-    const person = await prisma.user.create({
-      data: { email: demoEmail(key), username: `demo_${key}`, displayName, avatarColor },
-    });
-    people[key] = person.id;
-  }
+  const people = await createDemoPeople(prisma);
 
   const adminId = role === 'admin' ? user.id : people.priya;
   const household = await prisma.household.create({
@@ -94,35 +177,33 @@ export async function seedDemoHousehold(prisma: PrismaClient, email: string, rol
     },
   });
 
-  const addDay = async (date: Date, status: Prisma.MealDayCreateManyInput['status'], dishes: DemoDish[], votingEndsAt?: Date) => {
-    await prisma.mealDay.create({ data: { householdId: household.id, date, status, votingEndsAt } });
-    for (const { meal, name, chosenBy = [], suggestedBy } of dishes) {
-      const dish = await prisma.plannedDish.create({
-        data: {
-          householdId: household.id,
-          date,
-          meal,
-          name,
-          prepMinutes: 10,
-          cookMinutes: 25,
-          baseServings: 4,
-          isSuggestion: suggestedBy !== undefined,
-          status: suggestedBy ? 'pending' : 'approved',
-          addedById: suggestedBy ? people[suggestedBy] : adminId,
-        },
-      });
-      for (const key of chosenBy) {
-        await prisma.mealResponse.create({
-          data: { householdId: household.id, date, meal, userId: people[key], dishId: dish.id },
-        });
-      }
-    }
-  };
+  const today = await planDemoDays(prisma, household.id, adminId, people, now);
+  return { householdId: household.id, today };
+}
 
-  const today = toDbDate(fromDbDate(now));
-  await addDay(addDays(today, -1), 'fixed', FIXED_DAY);
-  await addDay(today, 'open', OPEN_DAY, new Date(now.getTime() + VOTING_HOURS * 60 * 60 * 1000));
-  await addDay(addDays(today, 1), 'draft', DRAFT_DAY);
+/** Adds the demo people and meals to a household someone already runs. `--remove` takes only those back out. */
+export async function addDemoToMyHousehold(prisma: PrismaClient, emailOrUsername: string, now = new Date()) {
+  const handle = emailOrUsername.trim().toLowerCase();
+  const user = await prisma.user.findFirst({
+    where: { OR: [{ email: handle }, { username: handle }] },
+    include: { membership: { include: { household: { include: { members: true } } } } },
+  });
+  if (!user) throw new Error(`No account called ${emailOrUsername}. Sign up in the app first.`);
+  const { membership } = user;
+  if (!membership) throw new Error(`${emailOrUsername} isn't in a household yet.`);
+  if (membership.role !== 'admin') throw new Error('Only the household admin can do this.');
 
-  return { householdId: household.id, today: fromDbDate(today) };
+  await removeDemoHousehold(prisma);
+
+  const memberCount = await prisma.householdMember.count({ where: { householdId: membership.householdId } });
+  if (memberCount + DEMO_PEOPLE.length > MAX_HOUSEHOLD_MEMBERS) {
+    throw new Error(`${membership.household.name} has no room for ${DEMO_PEOPLE.length} more people.`);
+  }
+
+  const people = await createDemoPeople(prisma);
+  await prisma.householdMember.createMany({
+    data: Object.values(people).map((userId) => ({ householdId: membership.householdId, userId })),
+  });
+  const today = await planDemoDays(prisma, membership.householdId, user.id, people, now);
+  return { name: membership.household.name, today };
 }

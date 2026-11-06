@@ -62,10 +62,14 @@ async function currentMemberIds(householdId: string) {
   return household?.members.map((member) => member.userId) ?? [];
 }
 
-/** Members never see a day the admin is still drafting, or suggestions declined for someone else. */
+/**
+ * A suggestion is between the person who made it and the admin. Members also never see a day the
+ * admin is still drafting; on a running or fixed day everyone sees the plan.
+ */
 function isVisible(dish: DishWithResponses, membership: HouseholdMember, draftDates: Set<string>) {
-  if (membership.role !== 'admin' && draftDates.has(fromDbDate(dish.date))) return false;
-  return dish.status !== 'declined' || dish.addedById === membership.userId;
+  if (membership.role === 'admin' && dish.status !== 'declined') return true;
+  if (dish.addedById === membership.userId) return true;
+  return dish.status === 'approved' && !draftDates.has(fromDbDate(dish.date));
 }
 
 export async function getCalendar(userId: string, from: string, to: string) {
@@ -141,11 +145,11 @@ export async function addDish(userId: string, input: AddDishInput) {
   const isAdmin = membership.role === 'admin';
   const day = await repository.findDay(householdId, date);
   if (day?.status === 'fixed') throw fixedDay();
-  if (!isAdmin && day?.status !== 'open') throw timerNotRunning();
 
   const details = await dishDetails(userId, householdId, input);
-  if (await repository.findDuplicateDish(householdId, date, input.meal, details.name)) {
-    throw new AppError(409, 'This dish is already on this meal');
+  const duplicate = await repository.findDuplicateDish(householdId, date, input.meal, details.name);
+  if (duplicate) {
+    throw new AppError(409, isAdmin ? 'This dish is already on this meal' : 'Someone has already suggested this');
   }
 
   await repository.ensureDraftDay(householdId, date);
@@ -215,7 +219,8 @@ export async function decideSuggestion(userId: string, id: string, approve: bool
   requireAdmin(membership);
   await fixExpiredDays(membership.householdId);
   const dish = await findDishOrThrow(membership.householdId, id);
-  await requireRunningTimer(membership.householdId, dish.date);
+  const day = await repository.findDay(membership.householdId, dish.date);
+  if (day?.status === 'fixed') throw fixedDay();
   if (dish.status !== 'pending') throw new AppError(409, 'This suggestion was already decided');
 
   const decided = await repository.setDishStatus(id, approve ? 'approved' : 'declined');

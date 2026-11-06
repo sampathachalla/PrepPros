@@ -15,9 +15,9 @@ export function dayPermissions(day: MealDayState | undefined, isAdmin: boolean, 
   const fixed = isDayFixed(day, nowMs);
   return {
     canEditPlan: isAdmin && !isPast && !fixed,
-    canSuggest: !isAdmin && !isPast && running,
+    canSuggest: !isAdmin && !isPast && !fixed,
     canAnswer: running,
-    canDecide: isAdmin && running,
+    canDecide: isAdmin && !fixed,
     canStartTimer: isAdmin && !isPast && !running,
     canEndTimer: isAdmin && running,
   };

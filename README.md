@@ -30,6 +30,16 @@ Keep that process running while testing. It prints the public HTTPS API URL and
 the Expo QR code. For a custom development build, use `npm run tunnel:dev-client`
 instead. The public URLs change whenever the process is restarted.
 
+The app selects one backend centrally with `EXPO_PUBLIC_BACKEND_TARGET`:
+
+- `local` uses `EXPO_PUBLIC_LOCAL_API_URL`
+- `tunnel` uses `EXPO_PUBLIC_TUNNEL_API_URL`
+- `oci` uses `EXPO_PUBLIC_OCI_API_URL` and is the default
+
+On OCI, `preppros-tunnel.service` runs `npm run tunnel:persistent`. Systemd
+restarts it after process failures or a reboot, while the built-in watchdog
+restarts stale API or Expo relays that are still running but unreachable.
+
 In the output, you'll find options to open the app in a
 
 - [development build](https://docs.expo.dev/develop/development-builds/introduction/)

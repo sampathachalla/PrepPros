@@ -7,6 +7,10 @@ export const TAB_ROUTES = {
     name: 'calendar',
     title: 'Calendar',
   },
+  plan: {
+    name: 'plan',
+    title: 'Plan',
+  },
   bookmarks: {
     name: 'bookmarks',
     title: 'Bookmarks',

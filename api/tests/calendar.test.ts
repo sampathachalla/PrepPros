@@ -24,6 +24,13 @@ const accept = (auth: string, id: string) => api().post(`/calendar/dishes/${id}/
 const decide = (auth: string, id: string, approve: boolean) =>
   api().post(`/calendar/dishes/${id}/decision`).set('Authorization', auth).send({ approve });
 
+async function createThirdMember() {
+  const other = await createUser({ username: 'anu' });
+  const { household } = (await api().get('/household').set('Authorization', admin.auth)).body;
+  await api().post('/household/join').set('Authorization', other.auth).send({ code: household.inviteCode });
+  return { other };
+}
+
 /** Runs a day's timer out, as if the time had passed. */
 const expireTimer = () => prisma.mealDay.updateMany({ data: { votingEndsAt: new Date(Date.now() - 1000) } });
 
@@ -142,7 +149,6 @@ describe('members answer', () => {
   it('can’t answer before the timer starts', async () => {
     const dish = await add(admin.auth, { name: 'Chicken Curry' });
     expect((await accept(member.auth, dish.body.id)).status).toBe(409);
-    expect((await add(member.auth, { name: 'Pizza' })).status).toBe(409);
   });
 
   it('accepts a dish, and can change their mind', async () => {
@@ -174,6 +180,56 @@ describe('members answer', () => {
     const results = await Promise.all([accept(member.auth, curry), accept(member.auth, curry)]);
     expect(results.every((res) => res.status === 200)).toBe(true);
     expect(await prisma.mealResponse.count()).toBe(1);
+  });
+});
+
+describe('picking meals ahead of the timer', () => {
+  it('lets a member pick on a day nobody has planned, shown only to them and the admin', async () => {
+    const { other } = await createThirdMember();
+    const pick = await add(member.auth, { name: 'Pizza' });
+
+    expect(pick.status).toBe(201);
+    expect(pick.body).toMatchObject({ status: 'pending', isSuggestion: true });
+    const names = async (auth: string) => (await calendar(auth)).dishes.map((d: { name: string }) => d.name);
+    expect(await names(member.auth)).toEqual(['Pizza']);
+    expect(await names(admin.auth)).toEqual(['Pizza']);
+    expect(await names(other.auth)).toEqual([]);
+  });
+
+  it('keeps the admin\u2019s draft hidden while showing a member their own pick', async () => {
+    await add(admin.auth, { name: 'Chicken Curry' });
+    await add(member.auth, { name: 'Pizza' });
+
+    const names = (await calendar(member.auth)).dishes.map((d: { name: string }) => d.name);
+    expect(names).toEqual(['Pizza']);
+  });
+
+  it('lets the admin decide a pick before any timer, and the member still sees it', async () => {
+    const pick = await add(member.auth, { name: 'Pizza' });
+
+    const decided = await decide(admin.auth, pick.body.id, true);
+    expect(decided.status).toBe(200);
+    expect(decided.body.memberIds).toEqual([member.id]);
+    const [seen] = (await calendar(member.auth)).dishes;
+    expect(seen).toMatchObject({ name: 'Pizza', status: 'approved' });
+  });
+
+  it('turns a pick away once the day is fixed', async () => {
+    await add(admin.auth, { name: 'Chicken Curry' });
+    await api().post(`/calendar/days/${TOMORROW}/fix`).set('Authorization', admin.auth);
+
+    const late = await add(member.auth, { name: 'Pizza' });
+    expect(late.status).toBe(409);
+    expect(late.body.detail).toMatch(/fixed/);
+  });
+
+  it('tells a member someone else got there first, without saying who', async () => {
+    const { other } = await createThirdMember();
+    await add(member.auth, { name: 'Pizza' });
+
+    const second = await add(other.auth, { name: 'pizza' });
+    expect(second.status).toBe(409);
+    expect(second.body.detail).toBe('Someone has already suggested this');
   });
 });
 
