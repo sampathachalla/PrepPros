@@ -16,7 +16,7 @@ import { authStyles } from '../../../constants/theme';
 import { AUTH_COPY } from '../constants/auth';
 import { useSignupForm } from '../hooks/useSignupForm';
 
-const LOGO_ASPECT = 711 / 292;
+const LOGO_ASPECT = 663 / 244;
 
 export default function SignupScreen() {
   const { width: windowWidth } = useWindowDimensions();

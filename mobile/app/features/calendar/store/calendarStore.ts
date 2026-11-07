@@ -33,7 +33,6 @@ export interface CalendarState {
   withdrawDish: (dish: ScheduledDish, userId: string) => Promise<void>;
   decideSuggestion: (id: string, approve: boolean) => Promise<void>;
   /** Adds these dishes to the same day a week later. Returns how many made it; the rest were already there or fixed. */
-  copyPicks: (dishes: ScheduledDish[]) => Promise<number>;
   startTimer: (dates: string[], durationMinutes: number) => Promise<void>;
   fixDay: (date: string) => Promise<void>;
   /** Fixes several days at once, without a timer. */
@@ -154,16 +153,6 @@ export const useCalendarStore = create<CalendarState>()((set, get) => {
     },
 
     decideSuggestion: (id, approve) => change(calendarService.decide(id, approve)),
-
-    copyPicks: async (dishes) => {
-      const copies = await Promise.allSettled(
-        dishes.map((dish) =>
-          calendarService.addDish({ date: addDays(dish.date, 7), category: dish.category, fromDishId: dish.id }),
-        ),
-      );
-      await get().reload();
-      return copies.filter((copy) => copy.status === 'fulfilled').length;
-    },
 
     startTimer: (dates, durationMinutes) => change(calendarService.startTimer(dates, durationMinutes)),
     fixDay: (date) => change(calendarService.fixDay(date)),

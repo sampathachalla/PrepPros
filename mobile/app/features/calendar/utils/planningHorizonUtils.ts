@@ -28,3 +28,9 @@ export function canAdvanceWeekFrom(anchorDateStr: string): boolean {
   const nextWeekStart = addDays(getWeekStartKey(anchorDateStr), 7);
   return weeksAheadOfToday(nextWeekStart) <= MAX_WEEKS_AHEAD_OF_TODAY;
 }
+
+/** Whether the UI may show the previous week (swipe / chevron). */
+export function canRetreatWeekFrom(anchorDateStr: string): boolean {
+  const prevWeekStart = addDays(getWeekStartKey(anchorDateStr), -7);
+  return weeksAheadOfToday(prevWeekStart) >= -MAX_WEEKS_AHEAD_OF_TODAY;
+}

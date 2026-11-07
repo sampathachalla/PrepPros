@@ -1,170 +1,283 @@
-import React, { useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { Bookmark, Heart, Plus, Search, Sparkles } from 'lucide-react-native';
+import React, { useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  SectionList,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
+} from 'react-native';
+import { Plus, Search, Sparkles } from 'lucide-react-native';
 import { useCalendarColors } from '../hooks/useCalendarColors';
 import { useDishOptions } from '../hooks/useDishOptions';
-import { filterDishOptions } from '../utils/dayPlanUtils';
-import type { DishActionResult, DishOption, DishOptions, MealCategory } from '../types/calendar';
+import { buildPickerSections, filterDishOptions } from '../utils/dayPlanUtils';
+import type {
+  DishActionResult,
+  DishOption,
+  MealCategory,
+  PickerItem,
+  PickerItemState,
+  ScheduledDish,
+} from '../types/calendar';
 
-type MealPickTab = keyof DishOptions;
+type MealPickTab = 'forYou' | 'search';
 
 interface MealPickerPanelProps {
   category: MealCategory;
   onPick: (option: DishOption | { name: string }) => Promise<DishActionResult>;
+  /** What's already on this meal. Left out where the household's picks don't apply. */
+  householdDishes?: ScheduledDish[];
+  memberCount?: number;
+  myId?: string;
+  canAnswer?: boolean;
+  onToggleChoice?: (dish: ScheduledDish) => Promise<DishActionResult>;
+  /** Picking swaps your dish on this meal instead of adding another. */
+  replacing?: boolean;
 }
 
-const TABS: { key: MealPickTab; label: string; icon: typeof Sparkles; empty: string }[] = [
-  { key: 'recentlySaved', label: 'Recently saved', icon: Bookmark, empty: 'Links you save in Bookmarks show up here' },
-  { key: 'liked', label: 'Liked', icon: Heart, empty: 'Recipes you like show up here' },
-  { key: 'suggested', label: 'Suggested', icon: Sparkles, empty: 'No suggestions for this meal yet' },
+const TABS: { key: MealPickTab; label: string; icon: typeof Sparkles }[] = [
+  { key: 'forYou', label: 'For you', icon: Sparkles },
+  { key: 'search', label: 'Search', icon: Search },
 ];
 
-const CARD_WIDTH = 152;
+const CARD_ACTIONS: Record<PickerItemState, string> = {
+  suggest: '+ Add',
+  select: 'Choose',
+  selected: 'Chosen',
+  onPlan: 'On the plan',
+  waiting: 'Waiting for the admin',
+};
 
-/** Choose a dish from what you've saved or liked, from suggestions, or type one in. */
-export function MealPickerPanel({ category, onPick }: MealPickerPanelProps) {
+const COLUMNS = 2;
+/** Keeps at least two rows of cards on screen without pushing the sheet off a small phone. */
+const LIST_HEIGHT_SHARE = 0.55;
+
+const toRows = (items: PickerItem[]) =>
+  Array.from({ length: Math.ceil(items.length / COLUMNS) }, (_, row) =>
+    items.slice(row * COLUMNS, (row + 1) * COLUMNS),
+  );
+
+/** Choose a dish from the household's picks, what you've liked or saved, or suggestions, or type one in. */
+export function MealPickerPanel({
+  category,
+  onPick,
+  householdDishes,
+  memberCount,
+  myId,
+  canAnswer,
+  onToggleChoice,
+  replacing,
+}: MealPickerPanelProps) {
   const colors = useCalendarColors();
+  const { height } = useWindowDimensions();
   const { options, isLoading, error: loadError } = useDishOptions(category);
+  const [activeTab, setActiveTab] = useState<MealPickTab>('forYou');
   const [query, setQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<MealPickTab>('recentlySaved');
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const searching = query.trim().length > 0;
-  const uniqueOptions = [...options.recentlySaved, ...options.liked, ...options.suggested].filter(
-    (option, index, all) => all.findIndex(({ key }) => key === option.key) === index,
+  const pickerSections = useMemo(
+    () => buildPickerSections({ options, householdDishes, memberCount, myId, canAnswer }),
+    [options, householdDishes, memberCount, myId, canAnswer],
   );
-  const items = searching ? filterDishOptions(uniqueOptions, query) : options[activeTab];
-  const activeEmpty = TABS.find((tab) => tab.key === activeTab)?.empty;
 
-  const pick = async (key: string, option: DishOption | { name: string }) => {
+  const searching = activeTab === 'search';
+  const sections = useMemo(() => {
+    if (!searching) {
+      return pickerSections.map(({ key, title, items }) => ({ key, title, data: toRows(items) }));
+    }
+    const allItems = pickerSections.flatMap(({ items }) => items);
+    return [{ key: 'results', title: '', data: toRows(filterDishOptions(allItems, query)) }];
+  }, [pickerSections, query, searching]);
+  const hasItems = sections.some(({ data }) => data.length > 0);
+  const typedName = query.trim();
+  const typedAction = replacing ? 'Replace with' : 'Add';
+
+  const run = async (key: string, task: () => Promise<DishActionResult>) => {
     if (savingKey) return;
     setSavingKey(key);
     setError(null);
-    const result = await onPick(option);
+    const result = await task();
     setSavingKey(null);
     if (!result.success) setError(result.error ?? 'Could not add this dish.');
   };
 
+  const pressItem = ({ key, option, dish }: PickerItem) => {
+    if (option) void run(key, () => onPick(option));
+    else if (dish && onToggleChoice) void run(key, () => onToggleChoice(dish));
+  };
+
+  const renderCard = (item: PickerItem) => {
+    const inactive = item.state === 'onPlan' || item.state === 'waiting' || (item.dish && !onToggleChoice);
+    const meta = [item.minutes ? `${item.minutes}m` : null, item.reason].filter(Boolean).join(' · ');
+    const action = replacing && item.state === 'suggest' ? 'Replace' : CARD_ACTIONS[item.state];
+    return (
+      <TouchableOpacity
+        key={item.key}
+        onPress={() => pressItem(item)}
+        disabled={Boolean(inactive)}
+        activeOpacity={0.75}
+        accessibilityRole="button"
+        accessibilityState={{ disabled: Boolean(inactive), selected: item.state === 'selected' }}
+        accessibilityLabel={[item.name, meta, action].filter(Boolean).join(', ')}
+        style={[
+          styles.card,
+          {
+            borderColor: item.state === 'selected' ? colors.primary : colors.border,
+            backgroundColor: colors.inputBackground,
+          },
+        ]}
+      >
+        <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={3}>
+          {item.name}
+        </Text>
+        {meta ? (
+          <Text style={[styles.cardMeta, { color: colors.textMuted }]} numberOfLines={1}>
+            {meta}
+          </Text>
+        ) : null}
+        {savingKey === item.key ? (
+          <ActivityIndicator size="small" color={colors.primary} style={styles.cardSpinner} />
+        ) : (
+          <Text
+            style={[styles.cardAction, { color: inactive ? colors.textMuted : colors.primary }]}
+            numberOfLines={2}
+          >
+            {action}
+          </Text>
+        )}
+      </TouchableOpacity>
+    );
+  };
+
   return (
     <View style={styles.panel}>
-      <View style={styles.searchRow}>
-        <Search size={14} color={colors.textMuted} />
-        <TextInput
-          value={query}
-          onChangeText={(text) => {
-            setQuery(text);
-            setError(null);
-          }}
-          placeholder="Search, or type a dish name"
-          placeholderTextColor={colors.textMuted}
-          maxLength={150}
-          style={[
-            styles.input,
-            { borderColor: colors.border, backgroundColor: colors.inputBackground, color: colors.text },
-          ]}
-        />
+      <View style={styles.tabRow} accessibilityRole="tablist">
+        {TABS.map(({ key, label, icon: Icon }) => {
+          const selected = activeTab === key;
+          return (
+            <TouchableOpacity
+              key={key}
+              onPress={() => setActiveTab(key)}
+              activeOpacity={0.75}
+              accessibilityRole="tab"
+              accessibilityState={{ selected }}
+              style={[
+                styles.tabChip,
+                {
+                  backgroundColor: selected ? colors.primarySoft : colors.inputBackground,
+                  borderColor: selected ? colors.primary : colors.border,
+                },
+              ]}
+            >
+              <Icon size={12} color={selected ? colors.primary : colors.textMuted} />
+              <Text style={[styles.tabText, { color: selected ? colors.text : colors.textMuted }]} numberOfLines={1}>
+                {label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
-      {searching ? null : (
-        <View style={styles.tabRow}>
-          {TABS.map(({ key, label, icon: Icon }) => {
-            const selected = activeTab === key;
-            return (
-              <TouchableOpacity
-                key={key}
-                onPress={() => setActiveTab(key)}
-                activeOpacity={0.75}
-                accessibilityRole="tab"
-                accessibilityState={{ selected }}
-                style={[
-                  styles.tabChip,
-                  {
-                    backgroundColor: selected ? colors.primarySoft : colors.inputBackground,
-                    borderColor: selected ? colors.primary : colors.border,
-                  },
-                ]}
-              >
-                <Icon size={12} color={selected ? colors.primary : colors.textMuted} />
-                <Text style={[styles.tabText, { color: selected ? colors.text : colors.textMuted }]} numberOfLines={1}>
-                  {label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
+      {searching ? (
+        <View style={styles.searchRow}>
+          <Search size={14} color={colors.textMuted} />
+          <TextInput
+            value={query}
+            onChangeText={(text) => {
+              setQuery(text);
+              setError(null);
+            }}
+            placeholder="Search, or type a dish name"
+            placeholderTextColor={colors.textMuted}
+            maxLength={150}
+            returnKeyType="search"
+            accessibilityLabel="Search dishes, or type a dish name"
+            style={[
+              styles.input,
+              { borderColor: colors.border, backgroundColor: colors.inputBackground, color: colors.text },
+            ]}
+          />
         </View>
-      )}
+      ) : null}
 
       {isLoading ? (
         <ActivityIndicator color={colors.primary} style={styles.loading} accessibilityLabel="Loading dishes" />
-      ) : items.length === 0 ? (
+      ) : !hasItems ? (
         <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-          {loadError ?? (searching ? 'Nothing saved matches that' : activeEmpty)}
+          {loadError ?? (searching ? 'Nothing saved matches that' : 'Dishes you like or save show up here')}
         </Text>
       ) : (
-        <FlatList
-          horizontal
+        <SectionList
+          sections={sections}
           nestedScrollEnabled
           keyboardShouldPersistTaps="handled"
-          data={items}
-          keyExtractor={(item) => item.key}
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.carousel}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              onPress={() => pick(item.key, item)}
-              activeOpacity={0.75}
-              accessibilityRole="button"
-              accessibilityLabel={`Add ${item.name}`}
-              style={[styles.card, { borderColor: colors.border, backgroundColor: colors.inputBackground }]}
-            >
-              <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={3}>
-                {item.name}
+          stickySectionHeadersEnabled={false}
+          showsVerticalScrollIndicator={false}
+          style={{ maxHeight: height * LIST_HEIGHT_SHARE }}
+          keyExtractor={(row) => row.map(({ key }) => key).join('|')}
+          renderSectionHeader={({ section }) =>
+            section.title ? (
+              <Text style={[styles.sectionTitle, { color: colors.textMuted }]} accessibilityRole="header">
+                {section.title}
               </Text>
-              {item.reason || item.minutes ? (
-                <Text style={[styles.cardMeta, { color: colors.textMuted }]} numberOfLines={1}>
-                  {[item.minutes ? `${item.minutes}m` : null, item.reason].filter(Boolean).join(' · ')}
-                </Text>
-              ) : null}
-              {savingKey === item.key ? (
-                <ActivityIndicator size="small" color={colors.primary} style={styles.cardSpinner} />
-              ) : (
-                <Text style={[styles.cardAction, { color: colors.primary }]}>+ Add</Text>
-              )}
-            </TouchableOpacity>
+            ) : null
+          }
+          renderItem={({ item: row }) => (
+            <View style={styles.row}>
+              {row.map(renderCard)}
+              {row.length < COLUMNS ? <View style={styles.cardSpacer} /> : null}
+            </View>
           )}
         />
       )}
 
-      {query.trim().length >= 2 ? (
+      {searching && typedName.length >= 2 ? (
         <TouchableOpacity
-          onPress={() => pick('typed', { name: query.trim() })}
+          onPress={() => void run('typed', () => onPick({ name: typedName }))}
           style={[styles.typedButton, { borderColor: colors.primary }]}
           accessibilityRole="button"
+          accessibilityLabel={`${typedAction} ${typedName}`}
         >
           <Plus size={13} color={colors.primary} />
           <Text style={[styles.typedText, { color: colors.text }]} numberOfLines={1}>
-            Add “{query.trim()}”
+            {typedAction} “{typedName}”
           </Text>
         </TouchableOpacity>
       ) : null}
 
-      {error ? <Text style={[styles.error, { color: colors.error }]}>{error}</Text> : null}
+      {error || (hasItems && loadError) ? (
+        <Text style={[styles.error, { color: colors.error }]}>{error ?? loadError}</Text>
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   panel: { marginBottom: 10 },
+  tabRow: { flexDirection: 'row', gap: 6, marginBottom: 8 },
+  tabChip: {
+    flex: 1,
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 4,
+  },
+  tabText: { fontSize: 12, fontWeight: '700', flexShrink: 1 },
   searchRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
   input: { flex: 1, borderWidth: 1, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, fontSize: 13 },
-  tabRow: { flexDirection: 'row', gap: 6, marginBottom: 8 },
-  tabChip: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, borderWidth: 1, borderRadius: 10, paddingVertical: 7, paddingHorizontal: 4 },
-  tabText: { fontSize: 11, fontWeight: '700', flexShrink: 1 },
   loading: { paddingVertical: 20 },
   emptyText: { fontSize: 12, textAlign: 'center', paddingVertical: 16 },
-  carousel: { gap: 8, paddingVertical: 2 },
-  card: { width: CARD_WIDTH, minHeight: 104, borderWidth: 1, borderRadius: 12, padding: 10, justifyContent: 'space-between' },
+  sectionTitle: { fontSize: 12, fontWeight: '800', marginTop: 4, marginBottom: 6 },
+  row: { flexDirection: 'row', gap: 8, marginBottom: 8 },
+  card: { flex: 1, minHeight: 104, borderWidth: 1, borderRadius: 12, padding: 10, justifyContent: 'space-between' },
+  cardSpacer: { flex: 1 },
   cardTitle: { fontSize: 13, fontWeight: '700' },
   cardMeta: { fontSize: 10, marginTop: 4 },
   cardAction: { fontSize: 12, fontWeight: '800', marginTop: 6 },

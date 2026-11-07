@@ -28,6 +28,7 @@ export default function CalendarScreen() {
     selectDate,
     goToPrevious,
     goToNext,
+    canGoToPreviousWeek,
     canGoToNextWeek,
   } = useCalendar();
 
@@ -69,6 +70,7 @@ export default function CalendarScreen() {
           onSelectDate={selectDate}
           onPreviousWeek={goToPrevious}
           onNextWeek={goToNext}
+          disablePrevious={!canGoToPreviousWeek}
           disableNext={!canGoToNextWeek}
         />
       ) : null}

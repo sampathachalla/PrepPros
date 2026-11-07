@@ -3,7 +3,6 @@ import { Platform } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
 import {
   CalendarDays,
-  ClipboardList,
   MessageSquare,
   Bookmark,
   User,
@@ -67,6 +66,7 @@ export default function TabsLayout() {
         name="chat"
         options={{
           title: 'Chat',
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <MessageSquare size={size ?? 22} color={color} />
           ),
@@ -78,15 +78,6 @@ export default function TabsLayout() {
           title: 'Calendar',
           tabBarIcon: ({ color, size }) => (
             <CalendarDays size={size ?? 22} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="plan"
-        options={{
-          title: 'Plan',
-          tabBarIcon: ({ color, size }) => (
-            <ClipboardList size={size ?? 22} color={color} />
           ),
         }}
       />
@@ -108,7 +99,7 @@ export default function TabsLayout() {
           ),
         }}
       />
-      {/* Opened from the Chat header, so it has no tab of its own */}
+      {/* Opened from the Chat message box, so it has no tab of its own */}
       <Tabs.Screen name="meal-prep" options={{ title: 'Meal Prep', ...HIDDEN_TAB_OPTIONS }} />
     </Tabs>
   );

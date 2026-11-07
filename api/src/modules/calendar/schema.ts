@@ -27,6 +27,8 @@ export const addDishSchema = z
     fromDishId: z.uuid().optional(),
     name: z.string().trim().min(2, 'Dish name must be at least 2 characters').max(150).optional(),
     notes: z.string().trim().max(500).optional(),
+    /** Your own dish on this meal, which the new one takes the place of. */
+    replacesDishId: z.uuid().optional(),
   })
   .refine(
     (input) => [input.recipeId, input.bookmarkId, input.fromDishId, input.name].filter(Boolean).length === 1,

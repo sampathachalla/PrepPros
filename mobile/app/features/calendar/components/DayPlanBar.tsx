@@ -68,7 +68,7 @@ export function DayPlanBar({ dateKey, isAdmin }: DayPlanBarProps) {
           ? hasDishes
             ? 'Only you can see this until you fix it or start the timer'
             : 'Choose the dishes for each meal, then start the timer'
-          : 'The admin is planning this day. You can still pick from the Plan tab.';
+          : 'The admin is planning this day. You can still suggest a dish.';
 
   const Icon = running ? Clock : fixed ? CheckCircle2 : PencilLine;
 

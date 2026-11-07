@@ -19,7 +19,7 @@ import { authStyles } from '../../../constants/theme';
 import { AUTH_COPY } from '../constants/auth';
 import { useLoginForm } from '../hooks/useLoginForm';
 
-const LOGO_ASPECT = 711 / 292;
+const LOGO_ASPECT = 663 / 244;
 
 export default function LoginScreen() {
   const { width: windowWidth } = useWindowDimensions();

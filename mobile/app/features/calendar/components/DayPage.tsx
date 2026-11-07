@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { selectIsHouseholdAdmin, useHouseholdStore } from '../../household/store/householdStore';
 import { MEAL_CATEGORIES } from '../constants/calendar';
@@ -6,9 +6,11 @@ import { useCalendarColors } from '../hooks/useCalendarColors';
 import { useNow } from '../hooks/useNow';
 import { EMPTY_CATEGORY_DISHES, useCalendarStore } from '../store/calendarStore';
 import { getTodayDateKey } from '../utils/dateUtils';
-import { dayPermissions } from '../utils/dayPlanUtils';
+import { dayPermissions, findOwnDish } from '../utils/dayPlanUtils';
 import { isPlanningEditable } from '../utils/planningHorizonUtils';
+import type { MealCategory } from '../types/calendar';
 import { DayPlanBar } from './DayPlanBar';
+import { MealPickerSheet } from './MealPickerSheet';
 import { MealSection } from './MealSection';
 
 interface DayPageProps {
@@ -21,6 +23,7 @@ interface DayPageProps {
  */
 export function DayPage({ dateKey }: DayPageProps) {
   const colors = useCalendarColors();
+  const [openMeal, setOpenMeal] = useState<MealCategory | null>(null);
   // Every second, so swipes stop the moment a timer runs out
   const now = useNow(1000);
   const hasHousehold = useHouseholdStore((s) => s.household !== null);
@@ -38,6 +41,8 @@ export function DayPage({ dateKey }: DayPageProps) {
 
   const isPast = dateKey < getTodayDateKey() || !isPlanningEditable(dateKey);
   const permissions = dayPermissions(day, isAdmin, isPast, now);
+  const openMealLabel = MEAL_CATEGORIES.find(({ key }) => key === openMeal)?.label;
+  const openMealDishes = openMeal ? dishes[openMeal] ?? [] : [];
   const hint = permissions.canAnswer
     ? 'Tap a dish to choose it. One choice per meal.'
     : permissions.canEditPlan
@@ -61,7 +66,6 @@ export function DayPage({ dateKey }: DayPageProps) {
             MEAL_CATEGORIES.map((category, index) => (
               <MealSection
                 key={category.key}
-                dateKey={dateKey}
                 category={category.key}
                 label={category.label}
                 dishes={dishes[category.key] ?? []}
@@ -69,6 +73,7 @@ export function DayPage({ dateKey }: DayPageProps) {
                 myId={myId}
                 permissions={permissions}
                 showDivider={index > 0}
+                onAdd={() => setOpenMeal(category.key)}
               />
             ))
           )}
@@ -76,6 +81,23 @@ export function DayPage({ dateKey }: DayPageProps) {
 
         {hint && !isLoading ? <Text style={[styles.hint, { color: colors.textMuted }]}>{hint}</Text> : null}
       </ScrollView>
+
+      <MealPickerSheet
+        meal={openMeal}
+        title={
+          findOwnDish(openMealDishes, myId)
+            ? `Update ${openMealLabel}`
+            : isAdmin
+              ? `Add to ${openMealLabel}`
+              : `Suggest for ${openMealLabel}`
+        }
+        date={dateKey}
+        dishes={openMealDishes}
+        members={members}
+        myId={myId}
+        canAnswer={permissions.canAnswer}
+        onClose={() => setOpenMeal(null)}
+      />
     </View>
   );
 }

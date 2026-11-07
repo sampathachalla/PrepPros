@@ -9,6 +9,9 @@ export function useChat() {
   const messages = useChatStore((s) => s.messages);
   const isSending = useChatStore((s) => s.isSending);
   const startNewChat = useChatStore((s) => s.startNewChat);
+  const history = useChatStore((s) => s.history);
+  const conversationId = useChatStore((s) => s.conversationId);
+  const selectConversation = useChatStore((s) => s.selectConversation);
 
   const [draft, setDraft] = useState('');
 
@@ -73,6 +76,8 @@ export function useChat() {
   }, [startNewChat]);
 
   return {
+    conversationId,
+    history,
     messages,
     isSending,
     draft,
@@ -81,5 +86,6 @@ export function useChat() {
     send,
     retry,
     newChat,
+    selectConversation,
   };
 }

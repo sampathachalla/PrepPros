@@ -50,6 +50,7 @@ export interface AddDishPayload {
   bookmarkId?: string;
   fromDishId?: string;
   notes?: string;
+  replacesDishId?: string;
 }
 
 export interface DishOption {
@@ -67,6 +68,26 @@ export interface DishOptions {
   recentlySaved: DishOption[];
   liked: DishOption[];
   suggested: DishOption[];
+}
+
+/** suggest: not on the meal yet. select, selected, onPlan and waiting: already on the meal. */
+export type PickerItemState = 'suggest' | 'select' | 'selected' | 'onPlan' | 'waiting';
+
+/** One card in the meal picker. Exactly one of `option` or `dish` is set. */
+export interface PickerItem {
+  key: string;
+  name: string;
+  minutes?: number;
+  reason?: string;
+  state: PickerItemState;
+  option?: DishOption;
+  dish?: ScheduledDish;
+}
+
+export interface PickerSection {
+  key: 'household' | 'liked' | 'new' | 'possible';
+  title: string;
+  items: PickerItem[];
 }
 
 export interface CalendarResponse {

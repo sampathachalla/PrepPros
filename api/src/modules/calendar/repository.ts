@@ -45,6 +45,21 @@ export function deleteDish(id: string) {
   return prisma.plannedDish.delete({ where: { id } });
 }
 
+/** Swaps one dish for another in one step, so a failure can't leave the meal without either. */
+export function replaceDish(replacedId: string, data: Prisma.PlannedDishUncheckedCreateInput) {
+  return prisma.$transaction(async (tx) => {
+    await tx.plannedDish.deleteMany({ where: { id: replacedId } });
+    return tx.plannedDish.create({ data, include: withResponses });
+  });
+}
+
+/** The dish a person put on a meal. A declined dish doesn't count. */
+export function findOwnDish(householdId: string, date: Date, meal: MealType, userId: string) {
+  return prisma.plannedDish.findFirst({
+    where: { householdId, date, meal, addedById: userId, status: { not: 'declined' } },
+  });
+}
+
 export function findDuplicateDish(householdId: string, date: Date, meal: MealType, name: string) {
   return prisma.plannedDish.findFirst({
     where: {

@@ -15,7 +15,8 @@ import { AppTheme, AppThemeDark, Brand } from '@/constants/Colors';
 import { useThemeContext } from '@/context/ThemeContext';
 import { useHeaderSnapshot } from './screenHeader';
 
-const LOGO_ASPECT = 711 / 292;
+/** Wordmark aspect after trimming transparent PNG padding. */
+const LOGO_ASPECT = 663 / 244;
 /** Total header block height as a fraction of the window (includes status bar). */
 export const HEADER_HEIGHT_RATIO = 0.1;
 
@@ -86,18 +87,21 @@ export function AppHeader({
   const headerHeight = Math.round(screenHeight * HEADER_HEIGHT_RATIO);
   const contentHeight = Math.max(headerHeight - insets.top, 24);
 
-  const mascotSize = Math.max(36, Math.min(54, contentHeight - 6));
-  // Use the left side of the bar, up to the mascot, without reaching up into the status bar.
+  const mascotSize = Math.max(32, contentHeight - 1);
   const backSpace = showBack ? 42 : 0;
-  const maxLogoWidth = showMascot
-    ? Math.round((screenWidth - 32) / 2 - mascotSize / 2 - 4 - backSpace)
-    : Math.round((screenWidth - 32) * 0.72);
-  let logoWidth = Math.max(maxLogoWidth, 1);
-  let logoHeight = logoWidth / LOGO_ASPECT;
-  const maxLogoHeight = contentHeight - 2;
-  if (logoHeight > maxLogoHeight) {
-    logoHeight = maxLogoHeight;
-    logoWidth = Math.round(logoHeight * LOGO_ASPECT);
+  const leftLaneWidth = backSpace + (showMascot ? mascotSize : 0);
+  const rightReserve = Math.round((screenWidth - 32) * 0.36);
+  const maxLogoWidth = Math.max(
+    Math.round(screenWidth - 32 - leftLaneWidth - rightReserve - 8),
+    64,
+  );
+  const centerInset = Math.max(leftLaneWidth + 4, rightReserve);
+  // Keep the wordmark inside the row below the status bar (not under the clock / island).
+  let logoHeight = contentHeight;
+  let logoWidth = Math.round(logoHeight * LOGO_ASPECT);
+  if (logoWidth > maxLogoWidth) {
+    logoWidth = Math.max(maxLogoWidth, 1);
+    logoHeight = Math.round(logoWidth / LOGO_ASPECT);
   }
 
   const handleBack = () => {
@@ -120,24 +124,8 @@ export function AppHeader({
         },
       ]}
     >
-      {showLogo && (
-        <Image
-          source={require('../../../../assets/preppros-logo.png')}
-          style={{
-            position: 'absolute',
-            left: showBack ? 58 : 12,
-            bottom: 1,
-            width: logoWidth,
-            height: logoHeight,
-          }}
-          resizeMode="contain"
-          pointerEvents="none"
-          accessibilityRole="image"
-          accessibilityLabel="PrepPros"
-        />
-      )}
       <View style={[styles.content, { height: contentHeight }]}>
-        <View style={styles.leftSection}>
+        <View style={[styles.leftSection, leftLaneWidth > 0 && { width: leftLaneWidth }]}>
           {showBack && (
             <TouchableOpacity
               onPress={handleBack}
@@ -150,16 +138,28 @@ export function AppHeader({
               <ChevronLeft size={20} color={palette.text} />
             </TouchableOpacity>
           )}
-        </View>
-
-        {showMascot && (
-          <View style={styles.centerSection} pointerEvents="none">
+          {showMascot && (
             <Image
               source={require('../../../../assets/preppros-mascot.png')}
               style={{ width: mascotSize, height: mascotSize }}
               resizeMode="contain"
               accessibilityRole="image"
               accessibilityLabel="PrepPros panda chef mascot"
+            />
+          )}
+        </View>
+
+        {showLogo && (
+          <View
+            style={[styles.centerSection, { paddingHorizontal: centerInset }]}
+            pointerEvents="none"
+          >
+            <Image
+              source={require('../../../../assets/preppros-logo.png')}
+              style={{ width: logoWidth, height: logoHeight }}
+              resizeMode="contain"
+              accessibilityRole="image"
+              accessibilityLabel="PrepPros"
             />
           </View>
         )}
@@ -207,13 +207,13 @@ const styles = StyleSheet.create({
   leftSection: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexShrink: 0,
     zIndex: 2,
   },
   centerSection: {
     ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 120,
   },
   backButton: {
     width: 32,

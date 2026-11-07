@@ -1,5 +1,12 @@
-import { dayPermissions, filterDishOptions, formatTimeLeft, isDayFixed, isTimerRunning } from '../utils/dayPlanUtils';
-import type { MealDayState } from '../types/calendar';
+import {
+  buildPickerSections,
+  dayPermissions,
+  filterDishOptions,
+  formatTimeLeft,
+  isDayFixed,
+  isTimerRunning,
+} from '../utils/dayPlanUtils';
+import type { DishOption, DishOptions, MealDayState, ScheduledDish } from '../types/calendar';
 
 const NOW = new Date('2026-11-04T12:00:00.000Z').getTime();
 const open: MealDayState = { date: '2026-11-05', status: 'open', votingEndsAt: new Date(NOW + 60_000).toISOString() };
@@ -58,5 +65,78 @@ describe('filterDishOptions', () => {
     ];
     expect(filterDishOptions(options, ' CURRY ').map((o) => o.key)).toEqual(['a']);
     expect(filterDishOptions(options, '')).toHaveLength(2);
+  });
+});
+
+describe('buildPickerSections', () => {
+  const NO_OPTIONS: DishOptions = { recentlySaved: [], liked: [], suggested: [] };
+  const option = (key: string, name: string): DishOption => ({ key, name });
+  const dish = (id: string, overrides: Partial<ScheduledDish> = {}): ScheduledDish => ({
+    id,
+    name: `Dish ${id}`,
+    category: 'dinner',
+    date: '2026-11-05',
+    isSuggestion: false,
+    status: 'approved',
+    memberIds: [],
+    createdAt: '2026-11-01T00:00:00.000Z',
+    ...overrides,
+  });
+  const itemState = (planned: ScheduledDish, canAnswer: boolean) =>
+    buildPickerSections({ options: NO_OPTIONS, householdDishes: [planned], myId: 'me', canAnswer })[0].items[0].state;
+
+  it('orders the sections and leaves out empty ones', () => {
+    const sections = buildPickerSections({
+      options: {
+        liked: [option('a', 'Curry')],
+        recentlySaved: [option('b', 'Soup')],
+        suggested: [option('c', 'Salad')],
+      },
+      householdDishes: [dish('1')],
+    });
+    expect(sections.map(({ key }) => key)).toEqual(['household', 'liked', 'new', 'possible']);
+
+    const onlyLiked = buildPickerSections({ options: { ...NO_OPTIONS, liked: [option('a', 'Curry')] } });
+    expect(onlyLiked.map(({ key }) => key)).toEqual(['liked']);
+  });
+
+  it('shows a dish once, in the first section that has it', () => {
+    const sections = buildPickerSections({
+      options: {
+        liked: [option('a', ' CURRY ')],
+        recentlySaved: [option('a', 'Soup'), option('b', 'Salad')],
+        suggested: [option('c', 'salad')],
+      },
+      householdDishes: [dish('1', { name: 'Curry' })],
+    });
+    expect(sections.map(({ key, items }) => [key, items.map(({ name }) => name)])).toEqual([
+      ['household', ['Curry']],
+      ['new', ['Salad']],
+    ]);
+  });
+
+  it('leaves out declined dishes, so they can be suggested again', () => {
+    const sections = buildPickerSections({
+      options: { ...NO_OPTIONS, liked: [option('a', 'Curry')] },
+      householdDishes: [dish('1', { name: 'Curry', status: 'declined' })],
+    });
+    expect(sections.map(({ key }) => key)).toEqual(['liked']);
+    expect(sections[0].items[0].state).toBe('suggest');
+  });
+
+  it('gives every card the state that decides what a tap does', () => {
+    expect(itemState(dish('1', { status: 'pending' }), true)).toBe('waiting');
+    expect(itemState(dish('1'), false)).toBe('onPlan');
+    expect(itemState(dish('1'), true)).toBe('select');
+    expect(itemState(dish('1', { memberIds: ['me'] }), true)).toBe('selected');
+  });
+
+  it('shows the selected count on household cards', () => {
+    const [section] = buildPickerSections({
+      options: NO_OPTIONS,
+      householdDishes: [dish('1', { memberIds: ['me', 'you'], prepMinutes: 5, cookMinutes: 10 })],
+      memberCount: 4,
+    });
+    expect(section.items[0]).toMatchObject({ reason: '2 of 4', minutes: 15 });
   });
 });

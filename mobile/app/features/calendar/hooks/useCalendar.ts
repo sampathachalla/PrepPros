@@ -5,7 +5,7 @@ import { useHouseholdStore } from '../../household/store/householdStore';
 import { CALENDAR_POLL_INTERVAL_MS, TODAY_CHECK_INTERVAL_MS } from '../constants/calendar';
 import { useCalendarStore } from '../store/calendarStore';
 import { addDays, getTodayDateKey, getWeekDays } from '../utils/dateUtils';
-import { canAdvanceWeekFrom } from '../utils/planningHorizonUtils';
+import { canAdvanceWeekFrom, canRetreatWeekFrom } from '../utils/planningHorizonUtils';
 
 export function useCalendar() {
   const selectedDate = useCalendarStore((s) => s.selectedDate);
@@ -40,8 +40,11 @@ export function useCalendar() {
   // The week on screen is always the one holding the selected day
   const weekDays = useMemo(() => getWeekDays(selectedDate, selectedDate, today), [selectedDate, today]);
   const canGoToNextWeek = useMemo(() => canAdvanceWeekFrom(selectedDate), [selectedDate]);
+  const canGoToPreviousWeek = useMemo(() => canRetreatWeekFrom(selectedDate), [selectedDate]);
 
-  const goToPrevious = useCallback(() => setSelectedDate(addDays(selectedDate, -7)), [selectedDate, setSelectedDate]);
+  const goToPrevious = useCallback(() => {
+    if (canRetreatWeekFrom(selectedDate)) setSelectedDate(addDays(selectedDate, -7));
+  }, [selectedDate, setSelectedDate]);
 
   const goToNext = useCallback(() => {
     if (canAdvanceWeekFrom(selectedDate)) setSelectedDate(addDays(selectedDate, 7));
@@ -86,6 +89,7 @@ export function useCalendar() {
     selectDate: setSelectedDate,
     goToPrevious,
     goToNext,
+    canGoToPreviousWeek,
     canGoToNextWeek,
   };
 }

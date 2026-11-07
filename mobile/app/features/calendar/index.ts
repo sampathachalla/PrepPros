@@ -17,6 +17,7 @@ export * from './components/DayPage';
 export * from './components/DayPlanBar';
 export * from './components/DishCard';
 export * from './components/MealPickerPanel';
+export * from './components/MealPickerSheet';
 export * from './components/MealSection';
 export * from './components/StartTimerModal';
 export * from './components/SuggestionRow';

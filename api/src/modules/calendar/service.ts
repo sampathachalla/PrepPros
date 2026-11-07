@@ -134,7 +134,22 @@ async function dishDetails(userId: string, householdId: string, input: AddDishIn
   return { name: input.name! };
 }
 
-/** Admins add to the plan. Members suggest instead, and only while the timer runs. */
+/** You can only swap your own dish on the same meal, and a member's only until the admin approves it. */
+async function assertCanReplace(membership: HouseholdMember, id: string, date: Date, meal: MealType) {
+  const dish = await findDishOrThrow(membership.householdId, id);
+  const sameMeal = dish.date.getTime() === date.getTime() && dish.meal === meal;
+  if (!sameMeal || dish.addedById !== membership.userId || dish.status === 'declined') {
+    throw new AppError(403, 'You can only replace your own dish on this meal');
+  }
+  if (membership.role !== 'admin' && dish.status !== 'pending') {
+    throw new AppError(409, 'The admin has approved this dish, so it can’t be replaced');
+  }
+}
+
+/**
+ * Admins add to the plan. Members suggest instead, one dish per meal: to change it they replace it.
+ * Admins aren't limited here, so saving from Bookmarks or Recipes can still add more; the day screen holds them to one.
+ */
 export async function addDish(userId: string, input: AddDishInput) {
   const membership = await requireMembership(userId);
   const { householdId } = membership;
@@ -146,6 +161,12 @@ export async function addDish(userId: string, input: AddDishInput) {
   const day = await repository.findDay(householdId, date);
   if (day?.status === 'fixed') throw fixedDay();
 
+  if (input.replacesDishId) {
+    await assertCanReplace(membership, input.replacesDishId, date, input.meal);
+  } else if (!isAdmin && (await repository.findOwnDish(householdId, date, input.meal, userId))) {
+    throw new AppError(409, 'You already have a dish on this meal. Update it to change it.');
+  }
+
   const details = await dishDetails(userId, householdId, input);
   const duplicate = await repository.findDuplicateDish(householdId, date, input.meal, details.name);
   if (duplicate) {
@@ -153,7 +174,7 @@ export async function addDish(userId: string, input: AddDishInput) {
   }
 
   await repository.ensureDraftDay(householdId, date);
-  const dish = await repository.createDish({
+  const data = {
     notes: input.notes,
     ...details,
     householdId,
@@ -161,9 +182,14 @@ export async function addDish(userId: string, input: AddDishInput) {
     meal: input.meal,
     addedById: userId,
     isSuggestion: !isAdmin,
-    status: isAdmin ? 'approved' : 'pending',
-  });
-  return toDishResponse(dish);
+    status: isAdmin ? ('approved' as const) : ('pending' as const),
+  };
+  const dish = input.replacesDishId
+    ? await repository.replaceDish(input.replacesDishId, data)
+    : await repository.createDish(data);
+  // Adding a dish counts as picking it. A suggestion gets its pick when the admin approves it.
+  if (isAdmin) await repository.saveResponse(dish, userId);
+  return toDishResponse(await findDishOrThrow(householdId, dish.id));
 }
 
 async function findDishOrThrow(householdId: string, id: string) {

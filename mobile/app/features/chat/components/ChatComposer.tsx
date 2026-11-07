@@ -16,7 +16,7 @@ export function ChatComposer({ value, onChangeText, onSend, canSend }: ChatCompo
   const colors = useChatColors();
 
   return (
-    <View style={[styles.container, { borderTopColor: colors.palette.border, backgroundColor: colors.palette.background }]}>
+    <View style={[styles.container, { backgroundColor: colors.palette.background }]}>
       <View style={[styles.field, { backgroundColor: colors.assistantBubble, borderColor: colors.palette.border }]}>
         <TextInput
           value={value}
@@ -51,14 +51,14 @@ export function ChatComposer({ value, onChangeText, onSend, canSend }: ChatCompo
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 12,
-    paddingTop: 8,
-    paddingBottom: 10,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingTop: 10,
+    paddingBottom: 12,
   },
   field: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    borderRadius: 22,
+    minHeight: 52,
+    borderRadius: 26,
     borderWidth: StyleSheet.hairlineWidth,
     paddingLeft: 14,
     paddingRight: 5,

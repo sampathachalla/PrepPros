@@ -1,7 +1,5 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { MessageSquare } from 'lucide-react-native';
-import { Brand } from '@/constants/Colors';
 import { SUGGESTED_PROMPTS } from '../constants/chat';
 import { useChatColors } from '../hooks/useChatColors';
 
@@ -14,12 +12,9 @@ export function ChatEmptyState({ onSelectPrompt }: ChatEmptyStateProps) {
 
   return (
     <View style={styles.content}>
-      <View style={[styles.iconCircle, { backgroundColor: colors.pinkTint }]}>
-        <MessageSquare size={32} color={Brand.babyPink} />
-      </View>
-      <Text style={[styles.title, { color: colors.palette.text }]}>Your meal prep assistant</Text>
+      <Text style={[styles.title, { color: colors.palette.text }]}>What can I help you prep?</Text>
       <Text style={[styles.subtitle, { color: colors.palette.textMuted }]}>
-        Ask for recipe ideas, prep plans or macro help. It can search your recipes and bookmarks.
+        Ask about recipes, meal plans, macros, or your saved dishes.
       </Text>
 
       <View style={styles.prompts}>
@@ -30,7 +25,7 @@ export function ChatEmptyState({ onSelectPrompt }: ChatEmptyStateProps) {
             accessibilityRole="button"
             style={({ pressed }) => [
               styles.prompt,
-              { borderColor: colors.palette.border, backgroundColor: colors.palette.surface },
+              { backgroundColor: colors.palette.surface },
               pressed && styles.pressed,
             ]}
           >
@@ -45,40 +40,30 @@ export function ChatEmptyState({ onSelectPrompt }: ChatEmptyStateProps) {
 const styles = StyleSheet.create({
   content: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 32,
-  },
-  iconCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
+    justifyContent: 'flex-end',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
   },
   title: {
-    fontSize: 22,
-    fontWeight: '800',
-    letterSpacing: -0.3,
-    marginBottom: 8,
+    fontSize: 24,
+    fontWeight: '700',
+    marginBottom: 6,
   },
   subtitle: {
     fontSize: 14,
-    textAlign: 'center',
     lineHeight: 20,
-    marginBottom: 24,
+    marginBottom: 18,
   },
   prompts: {
     alignSelf: 'stretch',
-    gap: 8,
+    gap: 6,
   },
   prompt: {
-    borderWidth: 1,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    minHeight: 48,
+    justifyContent: 'center',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
   },
   promptText: {
     fontSize: 14,

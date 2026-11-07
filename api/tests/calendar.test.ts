@@ -162,10 +162,19 @@ describe('members answer', () => {
     await accept(member.auth, dal.body.id);
     const { dishes } = await calendar(member.auth);
     expect(dishes.find((d: { id: string }) => d.id === curry).memberIds).toEqual([]);
-    expect(dishes.find((d: { id: string }) => d.id === dal.body.id).memberIds).toEqual([member.id]);
+    expect(dishes.find((d: { id: string }) => d.id === dal.body.id).memberIds).toContain(member.id);
 
     await api().delete(`/calendar/dishes/${dal.body.id}/accept`).set('Authorization', member.auth);
-    expect(await prisma.mealResponse.count()).toBe(0);
+    expect(await prisma.mealResponse.count({ where: { userId: member.id } })).toBe(0);
+  });
+
+  it('counts the admin as picking a dish they add, and keeps the pick when they replace it', async () => {
+    const curry = await add(admin.auth, { name: 'Chicken Curry' });
+    expect(curry.body.memberIds).toEqual([admin.id]);
+
+    const dal = await add(admin.auth, { name: 'Dal', replacesDishId: curry.body.id });
+    expect(dal.body.memberIds).toEqual([admin.id]);
+    expect(await prisma.mealResponse.count()).toBe(1);
   });
 
   it('can’t change the plan', async () => {
@@ -179,7 +188,7 @@ describe('members answer', () => {
     const curry = await openDay();
     const results = await Promise.all([accept(member.auth, curry), accept(member.auth, curry)]);
     expect(results.every((res) => res.status === 200)).toBe(true);
-    expect(await prisma.mealResponse.count()).toBe(1);
+    expect(await prisma.mealResponse.count({ where: { userId: member.id } })).toBe(1);
   });
 });
 
@@ -278,6 +287,36 @@ describe('suggestions', () => {
     expect((await api().delete(`/calendar/dishes/${pizza.id}`).set('Authorization', member.auth)).status).toBe(204);
   });
 
+  it('holds a member to one dish a meal, and lets them replace it', async () => {
+    const pizza = await suggest();
+
+    const second = await add(member.auth, { name: 'Pasta' });
+    expect(second.status).toBe(409);
+
+    const replaced = await add(member.auth, { name: 'Pasta', replacesDishId: pizza.id });
+    expect(replaced.status).toBe(201);
+    expect(replaced.body).toMatchObject({ name: 'Pasta', status: 'pending' });
+    const names = (await calendar(member.auth)).dishes.map((d: { name: string }) => d.name);
+    expect(names).toEqual(['Chicken Curry', 'Pasta']);
+  });
+
+  it('lets a member suggest again once declined', async () => {
+    const pizza = await suggest();
+    await decide(admin.auth, pizza.id, false);
+
+    expect((await add(member.auth, { name: 'Pasta' })).status).toBe(201);
+  });
+
+  it('won’t replace an approved suggestion, or someone else’s dish', async () => {
+    const curry = await openDay();
+    const pizza = (await add(member.auth, { name: 'Pizza' })).body;
+    await decide(admin.auth, pizza.id, true);
+
+    expect((await add(member.auth, { name: 'Pasta', replacesDishId: pizza.id })).status).toBe(409);
+    expect((await add(member.auth, { name: 'Pasta', replacesDishId: curry })).status).toBe(403);
+    expect((await add(admin.auth, { name: 'Pasta', replacesDishId: pizza.id })).status).toBe(403);
+  });
+
   it('can only be decided once', async () => {
     const pizza = await suggest();
     await decide(admin.auth, pizza.id, true);
@@ -314,13 +353,15 @@ describe('when the timer ends', () => {
   });
 
   it('settles ties on the dish added first', async () => {
+    const { other } = await createThirdMember();
     const curry = await openDay();
     await add(admin.auth, { name: 'Dal' });
+    await accept(member.auth, curry);
     await expireTimer();
     await calendar(admin.auth);
 
-    const responses = await prisma.mealResponse.findMany();
-    expect(responses.map((r) => r.dishId)).toEqual([curry, curry]);
+    const response = await prisma.mealResponse.findFirstOrThrow({ where: { userId: other.id } });
+    expect(response).toMatchObject({ dishId: curry, isDefault: true });
   });
 
   it('declines suggestions nobody decided on', async () => {
@@ -413,7 +454,7 @@ describe('when someone leaves', () => {
 
     await api().post('/household/leave').set('Authorization', member.auth);
 
-    expect(await prisma.mealResponse.count()).toBe(0);
+    expect(await prisma.mealResponse.count({ where: { userId: member.id } })).toBe(0);
     expect(await prisma.plannedDish.count()).toBe(1);
   });
 });

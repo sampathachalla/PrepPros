@@ -1,17 +1,15 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useRouter } from 'expo-router';
-import { Apple, Moon, Plus, Sun, Utensils } from 'lucide-react-native';
+import { Apple, Moon, PencilLine, Plus, Sun, Utensils } from 'lucide-react-native';
 import { haptics } from '@/app/shared/services/haptics';
 import { useCalendarColors } from '../hooks/useCalendarColors';
 import { MEAL_CATEGORY_COLORS } from '../constants/calendar';
-import type { dayPermissions } from '../utils/dayPlanUtils';
-import { countPeopleAnswered } from '../utils/householdUtils';
+import { findOwnDish, type dayPermissions } from '../utils/dayPlanUtils';
 import type { HouseholdMember, MealCategory, ScheduledDish } from '../types/calendar';
 import { DishCard } from './DishCard';
+import { SuggestionRow } from './SuggestionRow';
 
 interface MealSectionProps {
-  dateKey: string;
   category: MealCategory;
   label: string;
   dishes: ScheduledDish[];
@@ -20,13 +18,13 @@ interface MealSectionProps {
   permissions: ReturnType<typeof dayPermissions>;
   /** Every row but the first draws the line separating it from the one above. */
   showDivider: boolean;
+  onAdd: () => void;
 }
 
 const CATEGORY_ICONS = { breakfast: Sun, lunch: Utensils, dinner: Moon, snacks: Apple } as const;
 
-/** One meal's row: the dishes the admin has set. Its button opens this meal on the Plan tab. */
+/** One meal's row: the dishes the admin has set, and your own suggestions. Its button opens the picker. */
 export function MealSection({
-  dateKey,
   category,
   label,
   dishes,
@@ -34,21 +32,29 @@ export function MealSection({
   myId,
   permissions,
   showDivider,
+  onAdd,
 }: MealSectionProps) {
-  const router = useRouter();
   const colors = useCalendarColors();
   const accent = MEAL_CATEGORY_COLORS[category];
   const Icon = CATEGORY_ICONS[category];
 
-  const canAdd = permissions.canEditPlan || permissions.canSuggest;
-  const buttonLabel = permissions.canEditPlan ? 'Add' : 'Suggest';
-  const approved = dishes.filter((dish) => dish.status === 'approved');
+  const ownDish = findOwnDish(dishes, myId);
+  // A member's dish can't be swapped once the admin has approved it
+  const canAdd = permissions.canEditPlan || (permissions.canSuggest && ownDish?.status !== 'approved');
+  // One dish each: Suggest adds it, then Update replaces it
+  const buttonLabel = ownDish ? 'Update' : 'Suggest';
+  const ButtonIcon = ownDish ? PencilLine : Plus;
   const pendingCount = dishes.filter((dish) => dish.status === 'pending').length;
-  const answered = countPeopleAnswered(members, approved);
+  const gridDishes = dishes.filter(
+    (dish) => dish.status === 'approved' || (dish.status === 'pending' && dish.addedById !== myId),
+  );
+  const ownSuggestions = permissions.canEditPlan
+    ? []
+    : dishes.filter((dish) => dish.status !== 'approved' && dish.addedById === myId);
 
-  const openInPlan = () => {
+  const openPicker = () => {
     haptics.selection();
-    router.navigate({ pathname: '/(tabs)/plan', params: { date: dateKey, meal: category } });
+    onAdd();
   };
 
   return (
@@ -58,43 +64,49 @@ export function MealSection({
           <Icon size={15} color={accent} />
         </View>
         <Text style={[styles.label, { color: colors.text }]}>{label}</Text>
-
-        {approved.length > 0 ? (
-          <View style={[styles.countBadge, { backgroundColor: `${accent}40` }]} accessibilityLabel={`${answered} of ${members.length} people answered`}>
-            <Text style={[styles.countText, { color: colors.text }]}>
-              {answered} of {members.length}
-            </Text>
-          </View>
-        ) : null}
-
-        {canAdd ? (
-          <TouchableOpacity
-            onPress={openInPlan}
-            activeOpacity={0.7}
-            hitSlop={6}
-            style={[styles.button, { borderColor: accent }]}
-            accessibilityRole="button"
-            accessibilityLabel={`${buttonLabel} for ${label}${pendingCount > 0 ? `, ${pendingCount} waiting` : ''}`}
-          >
-            <Plus size={13} color={colors.text} strokeWidth={2.5} />
-            <Text style={[styles.buttonText, { color: colors.text }]}>{buttonLabel}</Text>
-            {pendingCount > 0 ? (
-              <View style={[styles.pendingBadge, { backgroundColor: accent }]}>
-                <Text style={[styles.pendingText, { color: colors.onPrimary }]}>{pendingCount}</Text>
-              </View>
-            ) : null}
-          </TouchableOpacity>
-        ) : null}
       </View>
 
-      {approved.map((dish) => (
-        <DishCard key={dish.id} dish={dish} accent={accent} members={members} myId={myId} permissions={permissions} />
+      {gridDishes.length > 0 ? (
+        <View style={styles.grid}>
+          {gridDishes.map((dish) => (
+            <DishCard
+              key={dish.id}
+              dish={dish}
+              accent={accent}
+              members={members}
+              myId={myId}
+              permissions={permissions}
+            />
+          ))}
+        </View>
+      ) : null}
+
+      {ownSuggestions.map((dish) => (
+        <SuggestionRow key={dish.id} dish={dish} accent={accent} myId={myId} canDecide={false} />
       ))}
 
-      {approved.length === 0 ? (
+      {gridDishes.length === 0 ? (
         <Text style={[styles.emptyText, { color: colors.textMuted }]}>
           {canAdd ? 'Nothing planned yet' : 'No dishes for this meal'}
         </Text>
+      ) : null}
+
+      {canAdd ? (
+        <TouchableOpacity
+          onPress={openPicker}
+          activeOpacity={0.7}
+          style={[styles.button, { borderColor: accent }]}
+          accessibilityRole="button"
+          accessibilityLabel={`${buttonLabel} for ${label}${pendingCount > 0 ? `, ${pendingCount} waiting` : ''}`}
+        >
+          <ButtonIcon size={13} color={colors.text} strokeWidth={2.5} />
+          <Text style={[styles.buttonText, { color: colors.text }]}>{buttonLabel}</Text>
+          {pendingCount > 0 ? (
+            <View style={[styles.pendingBadge, { backgroundColor: accent }]}>
+              <Text style={[styles.pendingText, { color: colors.onPrimary }]}>{pendingCount}</Text>
+            </View>
+          ) : null}
+        </TouchableOpacity>
       ) : null}
     </View>
   );
@@ -106,12 +118,13 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   iconBubble: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   label: { flex: 1, fontSize: 15, fontWeight: '800' },
-  countBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
-  countText: { fontSize: 11, fontWeight: '800' },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 8 },
   emptyText: { fontSize: 13 },
   button: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 44,
     gap: 4,
     borderWidth: 1,
     borderRadius: 999,

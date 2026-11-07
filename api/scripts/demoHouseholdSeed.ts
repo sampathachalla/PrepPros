@@ -204,6 +204,7 @@ export async function addDemoToMyHousehold(prisma: PrismaClient, emailOrUsername
   await prisma.householdMember.createMany({
     data: Object.values(people).map((userId) => ({ householdId: membership.householdId, userId })),
   });
-  const today = await planDemoDays(prisma, membership.householdId, user.id, people, now);
+  // Credited to a demo person, so the demo never looks like something you added yourself
+  const today = await planDemoDays(prisma, membership.householdId, people.priya, people, now);
   return { name: membership.household.name, today };
 }
