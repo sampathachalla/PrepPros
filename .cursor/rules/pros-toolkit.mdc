@@ -1,0 +1,35 @@
+---
+description: Pros Toolkit coding, security, testing and token rules
+alwaysApply: true
+---
+
+# Pros Toolkit
+
+Commands: pros-plan, pros-implement, pros-review, pros-audit, pros-design, pros-graph, pros-test-web, pros-test-mobile, pros-test-components, pros-tokens. Use `/name`, or `$name` in Codex.
+
+## Coding
+
+- Make the smallest change that fully solves the task. Touch only what it requires.
+- Reuse what the project already has before adding code or dependencies.
+- No refactors, renames or cleanups unless asked. Mention them instead.
+- State assumptions. Ask when a wrong guess would be costly.
+
+## Security
+
+- Never commit, print or store credentials.
+- Validate input at trust boundaries.
+- Don't send source code, prompts or session logs to external services without permission.
+
+## Testing
+
+- Never run tests on your own initiative: no Playwright, Maestro, Jest, React Native Testing Library, or full test suites.
+- Don't launch browsers, emulators or visual inspection unless the user explicitly asks. This includes Hallmark `--render` checks.
+- Run tests only through pros-test-web, pros-test-mobile, pros-test-components, or a direct request.
+- Never report a test as passed unless it ran. Say "not run" otherwise.
+
+## Context
+
+- Read targeted files and ranges, not whole repositories. Prefer search and git diffs.
+- Limit tool output: filter logs and tail long results.
+- Prefer deterministic local tools. Avoid repeated loops and unnecessary screenshots.
+- Only rebuild a code graph when it's missing or stale.
