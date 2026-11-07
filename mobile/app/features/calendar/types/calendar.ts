@@ -19,6 +19,11 @@ export interface ScheduledDish {
   imageUrl?: string;
   prepMinutes?: number;
   cookMinutes?: number;
+  recipeId?: string;
+  bookmarkId?: string;
+  baseServings?: number;
+  ingredients?: string[];
+  steps?: string[];
   isSuggestion: boolean;
   status: DishStatus;
   addedById?: string;

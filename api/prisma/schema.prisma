@@ -97,6 +97,24 @@ enum PrepStatus {
   done
 }
 
+enum SlotPolicyStatus {
+  available
+  reserved
+}
+
+enum SubmissionStatus {
+  draft
+  submitted
+  locked
+}
+
+enum DraftSlotStatus {
+  empty
+  draft
+  needs_review
+  ready
+}
+
 enum BookmarkCategory {
   breakfast
   lunch_dinner
@@ -141,6 +159,9 @@ model User {
   suggestedMeals   SuggestedMeal[]
   likedMeals       LikedMeal[]
   socialMediaMeals SocialMediaMeal[]
+  mealProposals    MealProposal[]          @relation("ProposalProposer")
+  slotChoices      MemberSlotChoice[]
+  weekSubmissions  MemberWeeklySubmission[]
 
   @@map("users")
 }
@@ -431,11 +452,17 @@ model Household {
   inviteCode String            @unique @map("invite_code") @db.VarChar(12)
   createdAt  DateTime          @default(now()) @map("created_at") @db.Timestamptz
   updatedAt  DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
-  members    HouseholdMember[]
-  days       MealDay[]
-  dishes     PlannedDish[]
-  responses  MealResponse[]
-  checks     ShoppingCheck[]
+  members          HouseholdMember[]
+  days             MealDay[]
+  dishes           PlannedDish[]
+  responses        MealResponse[]
+  checks           ShoppingCheck[]
+  weeklyPlans      WeeklyPlan[]
+  slotPolicies     MealSlotPolicy[]
+  mealProposals    MealProposal[]
+  slotChoices      MemberSlotChoice[]
+  weekSubmissions  MemberWeeklySubmission[]
+  draftSlots       WeeklyMenuDraftSlot[]
 
   @@map("households")
 }
@@ -536,6 +563,144 @@ model ShoppingCheck {
 
   @@id([householdId, weekStart, itemKey])
   @@map("shopping_checks")
+}
+
+/// Household planning container for a Sunday-Saturday week.
+model WeeklyPlan {
+  householdId           String    @map("household_id") @db.Uuid
+  weekStart             DateTime  @map("week_start") @db.Date
+  submissionDeadline    DateTime? @map("submission_deadline") @db.Timestamptz
+  publishedVersion      Int       @default(0) @map("published_version")
+  publishedAt           DateTime? @map("published_at") @db.Timestamptz
+  hasUnpublishedChanges Boolean   @default(false) @map("has_unpublished_changes")
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  household             Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@id([householdId, weekStart])
+  @@map("weekly_plans")
+}
+
+/// Per-slot availability policy controlled by the household admin.
+model MealSlotPolicy {
+  householdId String           @map("household_id") @db.Uuid
+  date        DateTime         @db.Date
+  meal        MealType
+  status      SlotPolicyStatus @default(available)
+  updatedById String?          @map("updated_by_id") @db.Uuid
+  updatedAt   DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  household   Household        @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@id([householdId, date, meal])
+  @@map("meal_slot_policies")
+}
+
+/// One member's complete meal bundle proposal for a single slot.
+model MealProposal {
+  id          String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  householdId String             @map("household_id") @db.Uuid
+  date        DateTime           @db.Date
+  meal        MealType
+  proposerId  String             @map("proposer_id") @db.Uuid
+  createdAt   DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  household   Household          @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  proposer    User               @relation("ProposalProposer", fields: [proposerId], references: [id], onDelete: Cascade)
+  dishes      MealProposalDish[]
+  choices     MemberSlotChoice[]
+
+  @@unique([householdId, date, meal, proposerId])
+  @@index([householdId, date])
+  @@map("meal_proposals")
+}
+
+model MealProposalDish {
+  id           String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  proposalId   String       @map("proposal_id") @db.Uuid
+  position     Int
+  dishKey      String       @map("dish_key") @db.VarChar(200)
+  name         String       @db.VarChar(150)
+  imageUrl     String?      @map("image_url")
+  recipeId     String?      @map("recipe_id") @db.Uuid
+  bookmarkId   String?      @map("bookmark_id") @db.Uuid
+  prepMinutes  Int?         @map("prep_minutes")
+  cookMinutes  Int?         @map("cook_minutes")
+  baseServings Int?         @map("base_servings")
+  ingredients  String[]     @default([])
+  steps        String[]     @default([])
+  proposal     MealProposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+
+  @@index([proposalId, position])
+  @@map("meal_proposal_dishes")
+}
+
+/// One active complete meal proposal choice per member per slot.
+model MemberSlotChoice {
+  householdId String       @map("household_id") @db.Uuid
+  date        DateTime     @db.Date
+  meal        MealType
+  userId      String       @map("user_id") @db.Uuid
+  proposalId  String       @map("proposal_id") @db.Uuid
+  updatedAt   DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  household   Household    @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  proposal    MealProposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+
+  @@id([householdId, date, meal, userId])
+  @@index([proposalId])
+  @@map("member_slot_choices")
+}
+
+/// Member's weekly plan review & submission status.
+model MemberWeeklySubmission {
+  householdId String           @map("household_id") @db.Uuid
+  weekStart   DateTime         @map("week_start") @db.Date
+  userId      String           @map("user_id") @db.Uuid
+  status      SubmissionStatus @default(draft)
+  submittedAt DateTime?        @map("submitted_at") @db.Timestamptz
+  updatedAt   DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  household   Household        @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([householdId, weekStart, userId])
+  @@map("member_weekly_submissions")
+}
+
+/// Admin's unpublished working menu slot (shared by Bulk Grid & Daily Review).
+model WeeklyMenuDraftSlot {
+  householdId String                @map("household_id") @db.Uuid
+  date        DateTime              @db.Date
+  meal        MealType
+  status      DraftSlotStatus       @default(empty)
+  sourceNote  String?               @map("source_note") @db.VarChar(200)
+  updatedAt   DateTime              @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  household   Household             @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  dishes      WeeklyMenuDraftDish[]
+
+  @@id([householdId, date, meal])
+  @@map("weekly_menu_draft_slots")
+}
+
+model WeeklyMenuDraftDish {
+  id           String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  householdId  String              @map("household_id") @db.Uuid
+  date         DateTime            @db.Date
+  meal         MealType
+  position     Int
+  dishKey      String              @map("dish_key") @db.VarChar(200)
+  name         String              @db.VarChar(150)
+  imageUrl     String?             @map("image_url")
+  recipeId     String?             @map("recipe_id") @db.Uuid
+  bookmarkId   String?             @map("bookmark_id") @db.Uuid
+  prepMinutes  Int?                @map("prep_minutes")
+  cookMinutes  Int?                @map("cook_minutes")
+  baseServings Int?                @map("base_servings")
+  ingredients  String[]            @default([])
+  steps        String[]            @default([])
+  draftSlot    WeeklyMenuDraftSlot @relation(fields: [householdId, date, meal], references: [householdId, date, meal], onDelete: Cascade)
+
+  @@index([householdId, date, meal, position])
+  @@map("weekly_menu_draft_dishes")
 }
 
 /// Vector embeddings of a post's text, for semantic search by the future MCP server / LLM.

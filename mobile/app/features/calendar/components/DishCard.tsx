@@ -1,6 +1,7 @@
 import React from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Check, Clock3, ThumbsDown, ThumbsUp } from 'lucide-react-native';
+import { Image } from 'expo-image';
+import { Check, Clock3, Info, ThumbsDown, ThumbsUp } from 'lucide-react-native';
 import { ApiError } from '@/app/shared/services/apiClient';
 import { haptics } from '@/app/shared/services/haptics';
 import { useCalendarColors } from '../hooks/useCalendarColors';
@@ -15,6 +16,7 @@ interface DishCardProps {
   members: HouseholdMember[];
   myId: string;
   permissions: ReturnType<typeof dayPermissions>;
+  onInspect?: (dish: ScheduledDish) => void;
 }
 
 const showError = (error: unknown) => {
@@ -23,11 +25,10 @@ const showError = (error: unknown) => {
 };
 
 /**
- * A dish on the plan, shown like a poll option: the count gives its popularity, the names say who
- * picked it. Tap to accept it, tap again to undo; the admin holds it to remove it. Someone
- * else's suggestion shows here too, but can't be chosen until the admin approves or declines it here.
+ * A dish on the plan: in voting mode tap to accept/undo; in published/read-only mode tap to open
+ * Dish Details (ingredients, steps, and prep times).
  */
-export function DishCard({ dish, accent, members, myId, permissions }: DishCardProps) {
+export function DishCard({ dish, accent, members, myId, permissions, onInspect }: DishCardProps) {
   const colors = useCalendarColors();
   const store = useCalendarStore.getState;
   const chosen = dish.memberIds.includes(myId);
@@ -38,6 +39,7 @@ export function DishCard({ dish, accent, members, myId, permissions }: DishCardP
   const canChoose = permissions.canAnswer && !waiting;
   const suggester = waiting ? members.find((member) => member.id === dish.addedById) : undefined;
   const detail = suggester ? `Suggested by ${pickerNames([suggester], myId)}` : names;
+  const totalMinutes = (dish.prepMinutes ?? 0) + (dish.cookMinutes ?? 0);
   const accessibilityLabel = (
     waiting
       ? [dish.name, 'waiting for the admin', detail]
@@ -51,6 +53,17 @@ export function DishCard({ dish, accent, members, myId, permissions }: DishCardP
     else haptics.success();
     const task = chosen ? store().withdrawDish(dish, myId) : store().acceptDish(dish, myId);
     task.catch(showError);
+  };
+
+  const handlePress = () => {
+    if (canChoose) {
+      toggleChoice();
+      return;
+    }
+    if (onInspect) {
+      haptics.selection();
+      onInspect(dish);
+    }
   };
 
   const decide = (approve: boolean) => {
@@ -69,11 +82,11 @@ export function DishCard({ dish, accent, members, myId, permissions }: DishCardP
 
   return (
     <TouchableOpacity
-      onPress={canChoose ? toggleChoice : undefined}
+      onPress={handlePress}
       onLongPress={permissions.canEditPlan ? confirmRemove : undefined}
-      disabled={!canChoose && !permissions.canEditPlan}
-      activeOpacity={0.6}
-      accessibilityRole={canChoose ? 'checkbox' : undefined}
+      disabled={!canChoose && !permissions.canEditPlan && !onInspect}
+      activeOpacity={0.7}
+      accessibilityRole={canChoose ? 'checkbox' : 'button'}
       accessibilityState={canChoose ? { checked: chosen } : undefined}
       accessibilityLabel={accessibilityLabel}
       style={[
@@ -83,6 +96,9 @@ export function DishCard({ dish, accent, members, myId, permissions }: DishCardP
         waiting && styles.cardWaiting,
       ]}
     >
+      {dish.imageUrl ? (
+        <Image source={{ uri: dish.imageUrl }} style={styles.thumb} contentFit="cover" transition={150} />
+      ) : null}
       <View style={styles.topRow}>
         {waiting ? (
           <Clock3 size={18} color={colors.textMuted} />
@@ -91,14 +107,32 @@ export function DishCard({ dish, accent, members, myId, permissions }: DishCardP
             {chosen ? <Check size={13} color={colors.onPrimary} strokeWidth={3.5} /> : null}
           </View>
         )}
-        <Text style={[styles.count, { color: waiting ? colors.textMuted : colors.text }]}>
-          {waiting ? 'Waiting' : count}
-        </Text>
+        <View style={styles.topMetaRight}>
+          <Text style={[styles.count, { color: waiting ? colors.textMuted : colors.text }]}>
+            {waiting ? 'Waiting' : count}
+          </Text>
+          {onInspect ? (
+            <TouchableOpacity
+              onPress={() => {
+                haptics.selection();
+                onInspect(dish);
+              }}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={`View details for ${dish.name}`}
+            >
+              <Info size={14} color={colors.textMuted} />
+            </TouchableOpacity>
+          ) : null}
+        </View>
       </View>
       <View style={styles.text}>
         <Text numberOfLines={2} style={[styles.name, { color: colors.text }]}>
           {dish.name}
         </Text>
+        {totalMinutes > 0 ? (
+          <Text style={[styles.timeBadge, { color: colors.textMuted }]}>{totalMinutes} min</Text>
+        ) : null}
         {detail ? (
           <Text numberOfLines={1} style={[styles.names, { color: colors.textMuted }]}>
             {detail}
@@ -142,10 +176,18 @@ const styles = StyleSheet.create({
   },
   cardChosen: { borderWidth: 2 },
   cardWaiting: { borderStyle: 'dashed' },
+  thumb: {
+    width: '100%',
+    height: 68,
+    borderRadius: 9,
+    marginBottom: 2,
+  },
   topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6 },
+  topMetaRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   checkbox: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
-  text: { flexGrow: 1, gap: 1 },
+  text: { flexGrow: 1, gap: 2 },
   name: { fontSize: 14, fontWeight: '700' },
+  timeBadge: { fontSize: 11, fontWeight: '700' },
   names: { fontSize: 12, fontWeight: '600' },
   count: { fontSize: 12, fontWeight: '800' },
   decisions: { flexDirection: 'row', gap: 6 },

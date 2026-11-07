@@ -19,6 +19,7 @@ interface MealSectionProps {
   /** Every row but the first draws the line separating it from the one above. */
   showDivider: boolean;
   onAdd: () => void;
+  onInspectDish?: (dish: ScheduledDish) => void;
 }
 
 const CATEGORY_ICONS = { breakfast: Sun, lunch: Utensils, dinner: Moon, snacks: Apple } as const;
@@ -33,6 +34,7 @@ export function MealSection({
   permissions,
   showDivider,
   onAdd,
+  onInspectDish,
 }: MealSectionProps) {
   const colors = useCalendarColors();
   const accent = MEAL_CATEGORY_COLORS[category];
@@ -76,6 +78,7 @@ export function MealSection({
               members={members}
               myId={myId}
               permissions={permissions}
+              onInspect={onInspectDish}
             />
           ))}
         </View>

@@ -6,6 +6,7 @@ import { bookmarkRoutes } from './modules/bookmarks/routes.js';
 import { calendarRoutes } from './modules/calendar/routes.js';
 import { chatRoutes } from './modules/chat/routes.js';
 import { householdRoutes } from './modules/household/routes.js';
+import { mealPlannerRoutes } from './modules/mealPlanner/routes.js';
 import { mealPrepRoutes } from './modules/mealPrep/routes.js';
 import { profileRoutes } from './modules/profile/routes.js';
 import { recipeRoutes } from './modules/recipes/routes.js';
@@ -30,6 +31,7 @@ export function createApp() {
   app.use('/household', householdRoutes);
   app.use('/calendar', calendarRoutes);
   app.use('/meal-prep', mealPrepRoutes);
+  app.use('/meal-planner', mealPlannerRoutes);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

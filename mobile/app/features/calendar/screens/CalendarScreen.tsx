@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { CalendarDays, CalendarOff, Users } from 'lucide-react-native';
+import { CalendarDays, CalendarOff, Sparkles, Users } from 'lucide-react-native';
 import { HeaderIconButton, useScreenHeader } from '@/app/shared';
 import { NoticeBanner } from '@/app/shared/components/ui/NoticeBanner';
 import { haptics } from '@/app/shared/services/haptics';
@@ -33,24 +33,38 @@ export default function CalendarScreen() {
   } = useCalendar();
 
   const [isWeekVisible, setIsWeekVisible] = useState(true);
-  const weekToggle = useMemo(
+  const headerActions = useMemo(
     () => (
-      <HeaderIconButton
-        label={isWeekVisible ? 'Hide calendar' : 'Show calendar'}
-        onPress={() => {
-          haptics.selection();
-          setIsWeekVisible((visible) => !visible);
-        }}
-        icon={isWeekVisible ? CalendarDays : CalendarOff}
-      />
+      <View style={styles.headerActions}>
+        <TouchableOpacity
+          onPress={() => {
+            haptics.selection();
+            router.navigate('/(tabs)/meal-prep');
+          }}
+          style={[styles.planPill, { backgroundColor: colors.primarySoft, borderColor: colors.border }]}
+          accessibilityRole="button"
+          accessibilityLabel="Open Meal Planner"
+        >
+          <Sparkles size={13} color={colors.text} />
+          <Text style={[styles.planPillText, { color: colors.text }]}>Plan Week</Text>
+        </TouchableOpacity>
+        <HeaderIconButton
+          label={isWeekVisible ? 'Hide calendar' : 'Show calendar'}
+          onPress={() => {
+            haptics.selection();
+            setIsWeekVisible((visible) => !visible);
+          }}
+          icon={isWeekVisible ? CalendarDays : CalendarOff}
+        />
+      </View>
     ),
-    [isWeekVisible],
+    [colors.border, colors.primarySoft, colors.text, isWeekVisible, router],
   );
   // With the week row hidden, the header is the only place left that says which day this is
   useScreenHeader({
     title: 'Calendar',
     subtitle: isWeekVisible ? undefined : formatDisplayDate(selectedDate),
-    rightAction: weekToggle,
+    rightAction: headerActions,
   });
 
   return (
@@ -99,5 +113,19 @@ export default function CalendarScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  planPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  planPillText: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
   banner: { fontSize: 12, fontWeight: '600', textAlign: 'center', paddingHorizontal: 16, paddingTop: 8 },
 });
