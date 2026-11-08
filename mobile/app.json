@@ -9,7 +9,7 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.preppros.app"
+      "bundleIdentifier": "com.sampathachalla.preppros"
     },
     "android": {
       "package": "com.preppros.app",

@@ -5,7 +5,7 @@ const DEFAULT_OCI_API_URL = 'https://chaps-endowment-savior.ngrok-free.dev';
 
 export function resolveBackendTarget(value: string | undefined): BackendTarget {
   const target = value?.trim().toLowerCase();
-  return BACKEND_TARGETS.includes(target as BackendTarget) ? (target as BackendTarget) : 'oci';
+  return BACKEND_TARGETS.includes(target as BackendTarget) ? (target as BackendTarget) : 'local';
 }
 
 type BackendEnvironment = {
@@ -33,7 +33,7 @@ export function resolveBackendConfig(target: BackendTarget, env: BackendEnvironm
   return { target, variable, baseUrl: normalize(rawUrl) };
 }
 
-/** Builds default to OCI unless a development command explicitly selects local or tunnel. */
+/** Builds default to the local API unless a command explicitly selects tunnel or OCI. */
 export const BACKEND_TARGET = resolveBackendTarget(process.env.EXPO_PUBLIC_BACKEND_TARGET);
 
 const backend = resolveBackendConfig(BACKEND_TARGET, {
